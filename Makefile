@@ -1,3 +1,4 @@
+CACHEGRIND=qcachegrind
 ELVIS=./bin/elvis
 REBAR3=./bin/rebar3
 
@@ -30,6 +31,18 @@ elvis:
 eunit:
 	@echo "Running rebar3 eunit..."
 	@$(REBAR3) do eunit -cv, cover -v
+
+profile:
+	@echo "Profiling..."
+	@$(REBAR3) as test compile
+	@erl +K true \
+	     -noshell \
+	     -pa _build/test/lib/*/ebin \
+	     -pa _build/test/lib/*/test \
+		 -eval 'whitecap_profile:fprofx()' \
+		 -eval 'init:stop()'
+	@_build/test/lib/fprofx/erlgrindx -p fprofx.analysis
+	@$(CACHEGRIND) fprofx.cgrind
 
 test: elvis xref eunit dialyzer
 
