@@ -9,7 +9,8 @@
     headers/1,
     request/1,
     request/2,
-    request/3
+    request/3,
+    response/3
 ]).
 
 -record(bin_patterns, {
@@ -34,7 +35,6 @@ bin_patterns() ->
 headers(Headers) ->
     parse_headers(Headers, []).
 
-%% public
 -spec request(binary()) ->
     {ok, whitecap_req(), binary()} | error().
 
@@ -100,15 +100,10 @@ request(Data, #whitecap_req {
 
     {ok, Req, Data}.
 
-%% private
-binary_split_global(Bin, Pattern) ->
-    case binary:split(Bin, Pattern) of
-        [Split, Rest] ->
-            [Split | binary_split_global(Rest, Pattern)];
-        Rest ->
-            Rest
-    end.
+response(_Status, _Headers, _Body) ->
+    [].
 
+%% private
 content_length([]) ->
     {ok, undefined};
 content_length([<<"Content-Length: ", Rest/binary>> | _T]) ->
@@ -163,7 +158,7 @@ split_headers(Data, #bin_patterns {rn = Rn, rnrn = RnRn}) ->
         [Data] ->
             {error, not_enough_data};
         [Headers, Rest] ->
-            Headers2 = binary_split_global(Headers, Rn),
+            Headers2 = binary:split(Headers, Rn, [global]),
             case content_length(Headers2) of
                 {ok, ContentLength} ->
                     {ContentLength, Headers2, Rest};

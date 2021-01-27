@@ -1,10 +1,5 @@
--module(whitecap_req).
+-module(whitecap_acceptor_pool).
 -include("whitecap.hrl").
 
 -compile(inline).
 -compile({inline_size, 512}).
-
--export([body/1]).
-
-body(_) ->
-    ok.
