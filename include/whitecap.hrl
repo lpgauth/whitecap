@@ -1,6 +1,6 @@
 %% macros
 -define(APP, whitecap).
--define(CHILD(Name, Mod), {Name, {Mod, start_link, [Name]}, permanent, 5000, worker, [Mod]}).
+-define(CHILD(Name, Opts, Mod), {Name, {Mod, start_link, [Name, Opts]}, permanent, 5000, worker, [Mod]}).
 
 %% records
 -record(whitecap_req, {
