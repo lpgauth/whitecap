@@ -37,6 +37,7 @@ format_status(301) -> <<"HTTP/1.1 301 Moved Permanently\r\n">>;
 format_status(302) -> <<"HTTP/1.1 302 Found\r\n">>;
 format_status(403) -> <<"HTTP/1.1 403 Forbidden\r\n">>;
 format_status(404) -> <<"HTTP/1.1 404 Not Found\r\n">>;
+format_status(408) -> <<"HTTP/1.1 408 Request Timeout\r\n">>;
 format_status(500) -> <<"HTTP/1.1 500 Internal Server Error\r\n">>;
 format_status(502) -> <<"HTTP/1.1 502 Bad Gateway\r\n">>;
 format_status({Code, Reason}) -> [<<"HTTP/1.1 ">>, integer_to_binary(Code), <<" ">>, Reason, <<"\r\n">>].

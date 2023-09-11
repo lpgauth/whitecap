@@ -15,6 +15,8 @@
     socket
 }).
 
+-define(RECV_TIMEOUT, 300000).
+
 %% public
 start_link(Socket, Opts) ->
     proc_lib:spawn_link(?MODULE, recv_loop, [Socket, Opts]).
@@ -47,10 +49,15 @@ parse_requests(Data, Req, #state {
     end.
 
 recv_loop(Buffer, Req, #state {socket = Socket} = State, Opts) ->
-    case gen_tcp:recv(Socket, 0) of
+    case gen_tcp:recv(Socket, 0, ?RECV_TIMEOUT) of
         {ok, Data} ->
             Data2 = <<Buffer/binary, Data/binary>>,
             parse_requests(Data2, Req, State, Opts);
+        {error, timeout} ->
+            telemetry:execute([whitecap, connections, timeout], #{}),
+            gen_tcp:send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
+            gen_tcp:close(Socket),
+            ok;
         {error, closed} ->
             telemetry:execute([whitecap, connections, close], #{}),
             ok;
