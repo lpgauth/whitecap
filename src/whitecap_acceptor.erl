@@ -26,14 +26,15 @@ init(Name, Opts, Parent) ->
         true ->
             process_flag(trap_exit, true),
             proc_lib:init_ack(Parent, {ok, self()}),
-            {ok, LSocket} = listen(),
+            Port = maps:get(Opts, port, 8080),
+            {ok, LSocket} = listen(Port),
             loop(LSocket, Opts);
         {false, Pid} ->
             proc_lib:init_ack(Parent, {error, {already_started, Pid}})
     end.
 
 %% private
-listen() ->
+listen(Port) ->
     Options = [
         binary,
         {active, false},
@@ -41,7 +42,7 @@ listen() ->
         {reuseaddr, true}
     ] ++ so_reuseport(),
 
-    gen_tcp:listen(8080, Options).
+    gen_tcp:listen(Port, Options).
 
 loop(LSocket, Opts) ->
     {ok, Socket} = gen_tcp:accept(LSocket),

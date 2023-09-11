@@ -7,9 +7,10 @@
 -export([handle/2, response/2, response/3]).
 
 %% public
-handle(Req, #{handler := Handler}) ->
+handle(Req, #{handler := Handler} = Opts) ->
     try
-        Handler:handle(Req)
+        HandlerOpts = maps:get(handler_opts, Opts, #{}),
+        Handler:handle(Req, HandlerOpts)
     catch
         E:R:ST ->
             io:format("error: ~p:~p~n~p", [E, R, ST]),

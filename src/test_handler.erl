@@ -1,6 +1,6 @@
 -module(test_handler).
 
--export([handle/1]).
+-export([handle/2]).
 
-handle(_Req) ->
+handle(_Req, _Opts) ->
     {ok, whitecap_handler:response(200, [])}.
