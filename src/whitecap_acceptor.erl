@@ -24,7 +24,6 @@ start_link(Name, Opts) ->
 init(Name, Opts, Parent) ->
     case safe_register(Name) of
         true ->
-            process_flag(trap_exit, true),
             proc_lib:init_ack(Parent, {ok, self()}),
             Port = maps:get(port, Opts, 8080),
             {ok, LSocket} = listen(Port),
