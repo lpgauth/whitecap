@@ -26,7 +26,7 @@ init(Name, Opts, Parent) ->
         true ->
             process_flag(trap_exit, true),
             proc_lib:init_ack(Parent, {ok, self()}),
-            Port = maps:get(Opts, port, 8080),
+            Port = maps:get(port, Opts, 8080),
             {ok, LSocket} = listen(Port),
             loop(LSocket, Opts);
         {false, Pid} ->
