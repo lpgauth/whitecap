@@ -52,6 +52,7 @@ recv_loop(Buffer, Req, #state {socket = Socket} = State, Opts) ->
             Data2 = <<Buffer/binary, Data/binary>>,
             parse_requests(Data2, Req, State, Opts);
         {error, closed} ->
+            telemetry:execute([whitecap, connections, close], #{}),
             ok;
         {error, Reason} ->
             io:format("recv error ~p~n", [Reason]),

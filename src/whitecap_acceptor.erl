@@ -46,6 +46,7 @@ listen(Port) ->
 
 loop(LSocket, Opts) ->
     {ok, Socket} = gen_tcp:accept(LSocket),
+    telemetry:execute([whitecap, connections, accept], #{}),
     whitecap_connection:start_link(Socket, Opts),
     loop(LSocket, Opts).
 
