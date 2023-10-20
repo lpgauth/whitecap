@@ -35,6 +35,7 @@ format_status(200) -> <<"HTTP/1.1 200 OK\r\n">>;
 format_status(204) -> <<"HTTP/1.1 204 No Content\r\n">>;
 format_status(301) -> <<"HTTP/1.1 301 Moved Permanently\r\n">>;
 format_status(302) -> <<"HTTP/1.1 302 Found\r\n">>;
+format_status(400) -> <<"HTTP/1.1 400 Bad Request\r\n">>;
 format_status(403) -> <<"HTTP/1.1 403 Forbidden\r\n">>;
 format_status(404) -> <<"HTTP/1.1 404 Not Found\r\n">>;
 format_status(408) -> <<"HTTP/1.1 408 Request Timeout\r\n">>;
