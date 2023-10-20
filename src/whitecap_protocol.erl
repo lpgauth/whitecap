@@ -156,7 +156,9 @@ parse_verb_path(<<"GET ", Path/binary>>) ->
 parse_verb_path(<<"POST ", Path/binary>>) ->
     {post, Path};
 parse_verb_path(<<"PUT ", Path/binary>>) ->
-    {put, Path}.
+    {put, Path};
+parse_verb_path(<<"HEAD ", Path/binary>>) ->
+    {head, Path}.
 
 split_headers(Data, #bin_patterns {rn = Rn, rnrn = RnRn}) ->
     case binary:split(Data, RnRn) of
