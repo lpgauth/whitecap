@@ -142,8 +142,12 @@ parse_status_line(Data, #bin_patterns {rn = Rn}) ->
             Size = size(Line) - 9,
             case Line of
                 <<VerbPath:Size/binary, " HTTP/1.1">> ->
-                    {Verb, Path} = parse_verb_path(VerbPath),
-                    {Verb, Path, Rest};
+                    case parse_verb_path(VerbPath) of
+                        {ok, Verb, Path} ->
+                            {Verb, Path, Rest};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
                 <<_:Size/binary, " HTTP/1.0">> ->
                     {error, unsupported_feature};
                 _ ->
@@ -152,13 +156,15 @@ parse_status_line(Data, #bin_patterns {rn = Rn}) ->
     end.
 
 parse_verb_path(<<"GET ", Path/binary>>) ->
-    {get, Path};
+    {ok, get, Path};
 parse_verb_path(<<"POST ", Path/binary>>) ->
-    {post, Path};
+    {ok, post, Path};
 parse_verb_path(<<"PUT ", Path/binary>>) ->
-    {put, Path};
+    {ok, put, Path};
 parse_verb_path(<<"HEAD ", Path/binary>>) ->
-    {head, Path}.
+    {ok, head, Path};
+parse_verb_path(_verb_path) ->
+    {error, unsupported_feature}.
 
 split_headers(Data, #bin_patterns {rn = Rn, rnrn = RnRn}) ->
     case binary:split(Data, RnRn) of

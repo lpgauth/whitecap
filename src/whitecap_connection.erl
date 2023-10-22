@@ -33,7 +33,7 @@ parse_requests(Data, Req, #state {
         socket = Socket
     } = State, Opts) ->
 
-    % TODO: add timeout
+    % TODO: add timeout (408 Request Timeout)
     case whitecap_protocol:request(Data, Req, BinPatterns) of
         {ok, #whitecap_req {state = done} = Req2, Rest} ->
             {ok, Response} = whitecap_handler:handle(Req2, Opts),
@@ -44,7 +44,7 @@ parse_requests(Data, Req, #state {
         {error, not_enough_data} ->
             recv_loop(Data, Req, State, Opts);
         {error, _Reason} ->
-            % TODO: 500?
+            gen_tcp:send(Socket, whitecap_handler:response(501, [])),
             recv_loop(Data, Req, State, Opts)
     end.
 
