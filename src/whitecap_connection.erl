@@ -43,9 +43,11 @@ parse_requests(Data, Req, #state {
             recv_loop(Rest, Req2, State, Opts);
         {error, not_enough_data} ->
             recv_loop(Data, Req, State, Opts);
-        {error, _Reason} ->
+        {error, Reason} ->
+            io:format("parse error ~p~n", [Reason]),
             gen_tcp:send(Socket, whitecap_handler:response(501, [])),
-            recv_loop(Data, Req, State, Opts)
+            gen_tcp:close(Socket),
+            ok
     end.
 
 recv_loop(Buffer, Req, #state {socket = Socket} = State, Opts) ->
@@ -60,6 +62,7 @@ recv_loop(Buffer, Req, #state {socket = Socket} = State, Opts) ->
             ok;
         {error, closed} ->
             telemetry:execute([whitecap, connections, close], #{}),
+            gen_tcp:close(Socket),
             ok;
         {error, Reason} ->
             io:format("recv error ~p~n", [Reason]),
