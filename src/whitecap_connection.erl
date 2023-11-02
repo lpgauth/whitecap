@@ -16,7 +16,7 @@
 }).
 
 -define(MAX_KEEPALIVE, 10000).
--define(RECV_TIMEOUT, 300000).
+-define(RECV_TIMEOUT, 60000).
 
 %% public
 start_link(Socket, Opts) ->
