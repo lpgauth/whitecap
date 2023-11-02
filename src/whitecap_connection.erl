@@ -15,6 +15,7 @@
     socket
 }).
 
+-define(MAX_KEEPALIVE, 10000).
 -define(RECV_TIMEOUT, 300000).
 
 %% public
@@ -25,36 +26,55 @@ recv_loop(Socket, Opts) ->
     recv_loop(<<>>, undefined, #state {
         bin_patterns = whitecap_protocol:bin_patterns(),
         socket = Socket
-    }, Opts).
+    }, 0, Opts).
 
 %% private
 parse_requests(Data, Req, #state {
         bin_patterns = BinPatterns,
         socket = Socket
-    } = State, Opts) ->
+    } = State, N, Opts) ->
 
-    % TODO: add timeout (408 Request Timeout)
     case whitecap_protocol:request(Data, Req, BinPatterns) of
         {ok, #whitecap_req {state = done} = Req2, Rest} ->
-            {ok, Response} = whitecap_handler:handle(Req2, Opts),
-            gen_tcp:send(Socket, Response),
-            parse_requests(Rest, undefined, State, Opts);
+            {ok, {Status, Headers, Body}} = whitecap_handler:handle(Req2, Opts),
+            case N == ?MAX_KEEPALIVE of
+                true ->
+                    Headers2 = overwrite_key(Headers, "Connection", "close", false),
+                    Response = whitecap_handler:response(Status, Headers2, Body),
+                    gen_tcp:send(Socket, Response),
+                    gen_tcp:close(Socket),
+                    ok;
+                false ->
+                    Response = whitecap_handler:response(Status, Headers, Body),
+                    gen_tcp:send(Socket, Response),
+                    parse_requests(Rest, undefined, State, N, Opts)
+
+            end;
         {ok, #whitecap_req {} = Req2, Rest} ->
-            recv_loop(Rest, Req2, State, Opts);
+            recv_loop(Rest, Req2, State, N, Opts);
         {error, not_enough_data} ->
-            recv_loop(Data, Req, State, Opts);
+            recv_loop(Data, Req, State, N, Opts);
         {error, Reason} ->
             io:format("parse error ~p~n", [Reason]),
-            gen_tcp:send(Socket, whitecap_handler:response(501, [])),
+            gen_tcp:send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
             gen_tcp:close(Socket),
             ok
     end.
 
-recv_loop(Buffer, Req, #state {socket = Socket} = State, Opts) ->
+overwrite_key([], Key, Value2, false) ->
+    [{Key, Value2}];
+overwrite_key([], _Key, _Value2, true) ->
+    [];
+overwrite_key([{Key, _Value} | T], Key, Value2, _Overridden) ->
+    [{Key, Value2} | overwrite_key(T, Key, Value2, true)];
+overwrite_key([{Key, Value} | T], Key2, Value2, Overridden) ->
+    [{Key, Value} | overwrite_key(T, Key2, Value2, Overridden)].
+
+recv_loop(Buffer, Req, #state {socket = Socket} = State, N, Opts) ->
     case gen_tcp:recv(Socket, 0, ?RECV_TIMEOUT) of
         {ok, Data} ->
             Data2 = <<Buffer/binary, Data/binary>>,
-            parse_requests(Data2, Req, State, Opts);
+            parse_requests(Data2, Req, State, N, Opts);
         {error, timeout} ->
             telemetry:execute([whitecap, connections, timeout], #{}),
             gen_tcp:send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),

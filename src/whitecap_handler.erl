@@ -25,6 +25,7 @@ response(Status, Headers, Body) ->
     Headers2 = [{<<"Content-Length">>, ContentLength} | Headers],
     [format_status(Status), format_headers(Headers2), <<"\r\n">>, Body].
 
+%% private
 format_headers(Headers) ->
     [format_header(Header) || Header <- Headers].
 
