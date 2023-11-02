@@ -30,6 +30,7 @@ stop() ->
     {ok, pid()}.
 
 start(_StartType, _StartArgs) ->
+    whitecap_config:init(),
     whitecap_sup:start_link().
 
 -spec stop(term()) ->
