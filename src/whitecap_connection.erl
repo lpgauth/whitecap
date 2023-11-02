@@ -43,6 +43,8 @@ parse_requests(Data, Req, #state {
                     Response = whitecap_handler:response(Status, Headers2, Body),
                     gen_tcp:send(Socket, Response),
                     gen_tcp:close(Socket),
+                    telemetry:execute([whitecap, connections, close], #{}),
+                    telemetry:execute([whitecap, connections, max_keepalive], #{}),
                     ok;
                 false ->
                     Response = whitecap_handler:response(Status, Headers, Body),
@@ -58,6 +60,7 @@ parse_requests(Data, Req, #state {
             io:format("parse error ~p~n", [Reason]),
             gen_tcp:send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
             gen_tcp:close(Socket),
+            telemetry:execute([whitecap, connections, close], #{}),
             ok
     end.
 
@@ -76,13 +79,14 @@ recv_loop(Buffer, Req, #state {socket = Socket} = State, N, Opts) ->
             Data2 = <<Buffer/binary, Data/binary>>,
             parse_requests(Data2, Req, State, N, Opts);
         {error, timeout} ->
-            telemetry:execute([whitecap, connections, timeout], #{}),
             gen_tcp:send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
             gen_tcp:close(Socket),
+            telemetry:execute([whitecap, connections, close], #{}),
+            telemetry:execute([whitecap, connections, timeout], #{}),
             ok;
         {error, closed} ->
-            telemetry:execute([whitecap, connections, close], #{}),
             gen_tcp:close(Socket),
+            telemetry:execute([whitecap, connections, close], #{}),
             ok;
         {error, Reason} ->
             io:format("recv error ~p~n", [Reason]),
