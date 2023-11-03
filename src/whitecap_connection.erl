@@ -48,15 +48,14 @@ parse_requests(Data, Req, #state {
                 false ->
                     Response = whitecap_handler:response(Status, Headers, Body),
                     gen_tcp:send(Socket, Response),
-                    parse_requests(Rest, undefined, State, N, Opts)
+                    parse_requests(Rest, undefined, State, N + 1, Opts)
 
             end;
         {ok, #whitecap_req {} = Req2, Rest} ->
             recv_loop(Rest, Req2, State, N, Opts);
         {error, not_enough_data} ->
             recv_loop(Data, Req, State, N, Opts);
-        {error, Reason} ->
-            io:format("parse error ~p~n", [Reason]),
+        {error, _Reason} ->
             gen_tcp:send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
             gen_tcp:close(Socket),
             telemetry:execute([whitecap, connections, close], #{}),
