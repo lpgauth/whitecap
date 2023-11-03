@@ -28,12 +28,12 @@ recv_loop(Socket, Opts) ->
     }, 0, Opts).
 
 %% private
-close(Socket, Requests, Timestamp) ->
+close(Socket, KeepAlive, Timestamp) ->
     gen_tcp:close(Socket),
     telemetry:execute([whitecap, connections, close], #{}),
     telemetry:execute([whitecap, connections, stats], #{
         duration => duration(Timestamp),
-        keep_alive => Requests + 1
+        keep_alive => KeepAlive
     }).
 
 duration(Timestamp) ->
@@ -54,7 +54,7 @@ parse_requests(Data, Req, #state {
                     Headers2 = overwrite_key(Headers, "Connection", "close", false),
                     Response = whitecap_handler:response(Status, Headers2, Body),
                     gen_tcp:send(Socket, Response),
-                    close(Socket, N, Timestamp),
+                    close(Socket, N + 1, Timestamp),
                     telemetry:execute([whitecap, connections, max_keepalive], #{}),
                     ok;
                 false ->
