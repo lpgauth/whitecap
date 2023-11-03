@@ -21,10 +21,10 @@ response(Status, Headers) ->
   response(Status, Headers, <<>>).
 
 response(204, Headers, Body) ->
-    [<<"HTTP/1.1 204 No Content\r\n">>, format_headers(Headers), <<"\r\n">>, Body].
+    [<<"HTTP/1.1 204 No Content\r\n">>, format_headers(Headers), <<"\r\n">>, Body];
 
 response({204, _} = Status, Headers, Body) ->
-    [format_status(Status), format_headers(Headers), <<"\r\n">>, Body].
+    [format_status(Status), format_headers(Headers), <<"\r\n">>, Body];
 
 response(Status, Headers, Body) ->
     ContentLength = integer_to_binary(iolist_size(Body)),
