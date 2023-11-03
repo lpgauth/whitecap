@@ -2,20 +2,21 @@
 -include("whitecap.hrl").
 
 -export([
-    start_listeners/1
+    start_listeners/1,
+    start_listeners/2
 ]).
 
 -define(N, 4).
 
 %% public
 start_listeners(Opts) ->
-  start_listeners(?N, Opts).
+  start_listeners(Opts, ?N).
 
-start_listeners(0, _Opts) ->
+start_listeners(_Opts, 0) ->
   ok;
-start_listeners(N, Opts) ->
+start_listeners(Opts, N) ->
   supervisor:start_child(whitecap_sup, ?CHILD(name(N), Opts, whitecap_acceptor)),
-  start_listeners(N - 1, Opts).
+  start_listeners(Opts, N - 1).
 
 
 %% ptivate
