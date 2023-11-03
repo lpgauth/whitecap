@@ -43,6 +43,7 @@ parse_requests(Data, Req, #state {
                     gen_tcp:close(Socket),
                     telemetry:execute([whitecap, connections, close], #{}),
                     telemetry:execute([whitecap, connections, max_keepalive], #{}),
+                    telemetry:execute([whitecap, connections, requests], #{keep_alive => N + 1}),
                     ok;
                 false ->
                     Response = whitecap_handler:response(Status, Headers, Body),
@@ -59,6 +60,7 @@ parse_requests(Data, Req, #state {
             gen_tcp:send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
             gen_tcp:close(Socket),
             telemetry:execute([whitecap, connections, close], #{}),
+            telemetry:execute([whitecap, connections, requests], #{keep_alive => N}),
             ok
     end.
 
@@ -81,13 +83,12 @@ recv_loop(Buffer, Req, #state {socket = Socket} = State, N, Opts) ->
             gen_tcp:send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
             gen_tcp:close(Socket),
             telemetry:execute([whitecap, connections, close], #{}),
+            telemetry:execute([whitecap, connections, requests], #{keep_alive => N}),
             telemetry:execute([whitecap, connections, timeout], #{}),
             ok;
         {error, closed} ->
             gen_tcp:close(Socket),
             telemetry:execute([whitecap, connections, close], #{}),
-            ok;
-        {error, Reason} ->
-            io:format("recv error ~p~n", [Reason]),
+            telemetry:execute([whitecap, connections, requests], #{keep_alive => N}),
             ok
     end.
