@@ -6,19 +6,19 @@
     start_listeners/2
 ]).
 
--define(N, 4).
+-define(DEFAULT_LISTENERS, 4).
 
 %% public
 start_listeners(Opts) ->
-  start_listeners(Opts, ?N).
+    start_listeners(Opts, ?DEFAULT_LISTENERS).
 
 start_listeners(_Opts, 0) ->
-  ok;
+    ok;
 start_listeners(Opts, N) ->
-  supervisor:start_child(whitecap_sup, ?CHILD(name(N), Opts, whitecap_acceptor)),
-  start_listeners(Opts, N - 1).
+    supervisor:start_child(whitecap_sup, ?CHILD(name(N), Opts, whitecap_acceptor)),
+    start_listeners(Opts, N - 1).
 
 
 %% ptivate
 name(N) ->
-  list_to_atom("whitecap_listener_" ++ integer_to_list(N)).
+    list_to_atom("whitecap_listener_" ++ integer_to_list(N)).

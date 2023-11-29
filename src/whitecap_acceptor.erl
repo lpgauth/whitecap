@@ -15,7 +15,6 @@
     {ok, pid()}.
 
 start_link(Name, Opts) ->
-    io:format("[DEBUG] starting acceptor~n", []),
     proc_lib:start_link(?MODULE, init, [Name, Opts, self()]).
 
 -spec init(atom(), map(), pid()) ->
@@ -60,10 +59,10 @@ safe_register(Name) ->
 
 so_reuseport() ->
     case os:type() of
-          {unix, linux} ->
-              [{raw, 1, 15, <<1:32/native>>}];
-          {unix, darwin} ->
-              [{raw, 16#ffff, 16#0200, <<1:32/native>>}];
-          _ ->
-              []
-        end.
+        {unix, linux} ->
+            [{raw, 1, 15, <<1:32/native>>}];
+        {unix, darwin} ->
+            [{raw, 16#ffff, 16#0200, <<1:32/native>>}];
+        _ ->
+            []
+    end.
