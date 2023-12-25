@@ -94,5 +94,8 @@ recv_loop(Buffer, Req, #state {socket = Socket, timestamp = Timestamp} = State, 
             ok;
         {error, closed} ->
             close(Socket, N, Timestamp),
+            ok;
+        {error, etimedout} ->
+            close(Socket, N, Timestamp),
             ok
     end.
