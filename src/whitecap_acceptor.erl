@@ -34,6 +34,7 @@ init(Name, Opts, Parent) ->
 %% private
 listen(Port) ->
     Options = [
+        {inet_backend, socket},
         binary,
         {active, false},
         {backlog, 4096},
