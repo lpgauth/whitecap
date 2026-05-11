@@ -2,10 +2,32 @@
 -include("whitecap.hrl").
 
 -export([
-    start_listener/0
+    start_listeners/1,
+    start_listeners/2
 ]).
 
+-define(DEFAULT_LISTENERS, 4).
+
 %% public
-start_listener() ->
-    supervisor:start_child(whitecap_sup, ?CHILD(test, whitecap_acceptor)),
-    supervisor:start_child(whitecap_sup, ?CHILD(test2, whitecap_acceptor)).
+-spec start_listeners(map()) ->
+    ok | {error, term()}.
+
+start_listeners(Opts) ->
+    start_listeners(Opts, ?DEFAULT_LISTENERS).
+
+-spec start_listeners(map(), non_neg_integer()) ->
+    ok | {error, term()}.
+
+start_listeners(_Opts, 0) ->
+    ok;
+start_listeners(Opts, N) ->
+    case supervisor:start_child(whitecap_sup, ?CHILD(name(N), Opts, whitecap_acceptor)) of
+        {ok, _Pid} ->
+            start_listeners(Opts, N - 1);
+        {error, _} = Error ->
+            Error
+    end.
+
+%% private
+name(N) ->
+    list_to_atom("whitecap_listener_" ++ integer_to_list(N)).

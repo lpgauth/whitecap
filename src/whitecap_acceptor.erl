@@ -6,46 +6,63 @@
 
 %% internal
 -export([
-    init/2,
-    start_link/1
+    init/3,
+    start_link/2
 ]).
 
 %% public
--spec start_link(atom()) ->
+-spec start_link(atom(), map()) ->
     {ok, pid()}.
 
-start_link(Name) ->
-    proc_lib:start_link(?MODULE, init, [Name, self()]).
+start_link(Name, Opts) ->
+    proc_lib:start_link(?MODULE, init, [Name, Opts, self()]).
 
--spec init(atom(), pid()) ->
+-spec init(atom(), map(), pid()) ->
     no_return() | ok.
 
-init(Name, Parent) ->
+init(Name, Opts, Parent) ->
     case safe_register(Name) of
         true ->
-            process_flag(trap_exit, true),
-            proc_lib:init_ack(Parent, {ok, self()}),
-            {ok, LSocket} = listen(),
-            loop(LSocket);
+            Ip = maps:get(ip, Opts, {0, 0, 0, 0}),
+            Port = maps:get(port, Opts, 8080),
+            case listen(Ip, Port) of
+                {ok, LSocket} ->
+                    proc_lib:init_ack(Parent, {ok, self()}),
+                    loop(LSocket, Opts);
+                {error, _} = Error ->
+                    proc_lib:init_ack(Parent, Error)
+            end;
         {false, Pid} ->
             proc_lib:init_ack(Parent, {error, {already_started, Pid}})
     end.
 
 %% private
-listen() ->
+listen(Ip, Port) ->
     Options = [
         binary,
         {active, false},
         {backlog, 4096},
-        {reuseaddr, true}
+        {nodelay, true},
+        {reuseaddr, true},
+        {ip, Ip}
     ] ++ so_reuseport(),
 
-    gen_tcp:listen(8080, Options).
+    gen_tcp:listen(Port, Options).
 
-loop(LSocket) ->
-    {ok, Socket} = gen_tcp:accept(LSocket),
-    whitecap_connection:start_link(Socket),
-    loop(LSocket).
+loop(LSocket, Opts) ->
+    case gen_tcp:accept(LSocket) of
+        {ok, Socket} ->
+            telemetry:execute([whitecap, connections, accept], #{}),
+            whitecap_connection:start_link(Socket, Opts),
+            loop(LSocket, Opts);
+        {error, closed} ->
+            ok;
+        {error, Reason} ->
+            logger:warning("whitecap accept error: ~p", [Reason]),
+            telemetry:execute([whitecap, connections, accept_error],
+                #{}, #{reason => Reason}),
+            loop(LSocket, Opts)
+    end.
 
 safe_register(Name) ->
     try register(Name, self()) of
@@ -58,10 +75,10 @@ safe_register(Name) ->
 
 so_reuseport() ->
     case os:type() of
-          {unix, linux} ->
-              [{raw, 1, 15, <<1:32/native>>}];
-          {unix, darwin} ->
-              [{raw, 16#ffff, 16#0200, <<1:32/native>>}];
-          _ ->
-              []
-        end.
+        {unix, linux} ->
+            [{raw, 1, 15, <<1:32/native>>}];
+        {unix, darwin} ->
+            [{raw, 16#ffff, 16#0200, <<1:32/native>>}];
+        _ ->
+            []
+    end.

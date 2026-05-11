@@ -1,5 +1,5 @@
 {application, whitecap, [
-  {applications, [foil, kernel, metal, stdlib]},
+  {applications, [foil, kernel, metal, stdlib, telemetry]},
   {description, "High-Performance Erlang HTTP 1.1 Server"},
   {env, []},
   {licenses, ["MIT"]},

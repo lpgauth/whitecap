@@ -21,6 +21,8 @@
 -type error()        :: {error, reason()}.
 -type reason()       :: bad_request | not_enough_data | unsupported_feature.
 
+-export_type([bin_patterns/0]).
+
 %% public
 -spec bin_patterns() ->
     bin_patterns().
@@ -30,6 +32,9 @@ bin_patterns() ->
         rn   = binary:compile_pattern(<<"\r\n">>),
         rnrn = binary:compile_pattern(<<"\r\n\r\n">>)
     }.
+
+-spec headers([binary()]) ->
+    {ok, [{binary(), undefined | binary()}]} | {error, invalid_headers}.
 
 headers(Headers) ->
     parse_headers(Headers, []).
@@ -86,7 +91,7 @@ request(Data, undefined, BinPatterns) ->
 request(Data, #whitecap_req {
         state = body,
         content_length = ContentLength
-    } = Request, _BinPatterns) when size(Data) >= ContentLength ->
+    } = Request, _BinPatterns) when byte_size(Data) >= ContentLength ->
 
     <<Body:ContentLength/binary, Rest/binary>> = Data,
 
@@ -142,8 +147,12 @@ parse_status_line(Data, #bin_patterns {rn = Rn}) ->
             Size = size(Line) - 9,
             case Line of
                 <<VerbPath:Size/binary, " HTTP/1.1">> ->
-                    {Verb, Path} = parse_verb_path(VerbPath),
-                    {Verb, Path, Rest};
+                    case parse_verb_path(VerbPath) of
+                        {ok, Verb, Path} ->
+                            {Verb, Path, Rest};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
                 <<_:Size/binary, " HTTP/1.0">> ->
                     {error, unsupported_feature};
                 _ ->
@@ -152,11 +161,15 @@ parse_status_line(Data, #bin_patterns {rn = Rn}) ->
     end.
 
 parse_verb_path(<<"GET ", Path/binary>>) ->
-    {get, Path};
+    {ok, get, Path};
 parse_verb_path(<<"POST ", Path/binary>>) ->
-    {post, Path};
+    {ok, post, Path};
 parse_verb_path(<<"PUT ", Path/binary>>) ->
-    {put, Path}.
+    {ok, put, Path};
+parse_verb_path(<<"HEAD ", Path/binary>>) ->
+    {ok, head, Path};
+parse_verb_path(_verb_path) ->
+    {error, unsupported_feature}.
 
 split_headers(Data, #bin_patterns {rn = Rn, rnrn = RnRn}) ->
     case binary:split(Data, RnRn) of

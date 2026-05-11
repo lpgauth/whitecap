@@ -1,1 +1,6 @@
 _build
+erl_crash.dump
+fprofx.analysis
+fprofx.cgrind
+output/
+rebar3.crashdump
