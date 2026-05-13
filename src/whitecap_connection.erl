@@ -70,6 +70,10 @@ parse_requests(Data, Req, #state {
             recv_loop(Rest, Req2, State, N, Opts);
         {error, not_enough_data} ->
             recv_loop(Data, Req, State, N, Opts);
+        {error, bad_request} ->
+            gen_tcp:send(Socket, whitecap_handler:response(400, [{"Connection", "close"}])),
+            close(Socket, N, Timestamp),
+            ok;
         {error, _Reason} ->
             gen_tcp:send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
             close(Socket, N, Timestamp),

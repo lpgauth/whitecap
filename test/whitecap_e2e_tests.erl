@@ -13,7 +13,9 @@ e2e_test_() ->
             {"POST with body returns 200", fun post_with_body/0},
             {"Pipelined requests both answered",
                 fun pipelined_requests/0},
-            {"Unsupported verb closes with 501", fun unsupported_verb/0}
+            {"Unsupported verb closes with 501", fun unsupported_verb/0},
+            {"Malformed request line closes with 400",
+                fun malformed_request_line/0}
         ]}.
 
 start() ->
@@ -50,6 +52,10 @@ pipelined_requests() ->
 unsupported_verb() ->
     {ok, Resp} = req(<<"DELETE / HTTP/1.1\r\nHost: x\r\n\r\n">>),
     ?assertMatch(<<"HTTP/1.1 501 Not Implemented", _/binary>>, Resp).
+
+malformed_request_line() ->
+    {ok, Resp} = req(<<"GARBAGE\r\n\r\n">>),
+    ?assertMatch(<<"HTTP/1.1 400 Bad Request", _/binary>>, Resp).
 
 %% private
 req(Bytes) ->

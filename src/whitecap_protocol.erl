@@ -144,7 +144,7 @@ parse_status_line(Data, #bin_patterns {rn = Rn}) ->
         [Data] ->
             {error, not_enough_data};
         [Line, Rest] ->
-            Size = size(Line) - 9,
+            Size = byte_size(Line) - 9,
             case Line of
                 <<VerbPath:Size/binary, " HTTP/1.1">> ->
                     case parse_verb_path(VerbPath) of
