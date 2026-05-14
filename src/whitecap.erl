@@ -2,6 +2,7 @@
 -include("whitecap.hrl").
 
 -export([
+    events/0,
     start_listeners/1,
     start_listeners/2
 ]).
@@ -9,6 +10,19 @@
 -define(DEFAULT_LISTENERS, 4).
 
 %% public
+-spec events() ->
+    [telemetry:event_name()].
+
+events() ->
+    [
+        [whitecap, connections, accept],
+        [whitecap, connections, accept_error],
+        [whitecap, connections, close],
+        [whitecap, connections, max_keepalive],
+        [whitecap, connections, stats],
+        [whitecap, connections, timeout]
+    ].
+
 -spec start_listeners(map()) ->
     ok | {error, term()}.
 

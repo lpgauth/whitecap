@@ -67,6 +67,21 @@ Events emitted under the `[whitecap, connections, ...]` prefix:
 
 `duration` is microseconds (from `os:system_time/0` deltas converted via `erlang:convert_time_unit/3`).
 
+`whitecap:events/0` returns the list of event names whitecap emits, so consumers can attach handlers programmatically:
+
+```erlang
+[telemetry:attach({whitecap_handler, Event}, Event, fun ?MODULE:handle/4, []) || Event <- whitecap:events()].
+```
+
+## Pipelining and backpressure
+
+Each connection worker is a single process serving a per-connection request loop with `gen_tcp:recv(Socket, 0, ReceiveTimeout)` + per-request `handle_request`. There is **no concurrent in-flight cap per connection** — whitecap reads, dispatches, and writes one request at a time on the same socket. That is appropriate because:
+
+- HTTP/1.1 pipelining is a sequence of requests sharing a socket; clients are expected to wait for response N before reading response N+1. Whitecap matches that contract.
+- All connection-level backpressure comes from the TCP send buffer: if the client stops draining responses, the next `gen_tcp:send` blocks the connection worker, naturally throttling that one socket.
+
+There is no shared in-flight queue across connections (that's what `max_keepalive` and connection count are for). If you need true pipelined parallelism inside one connection, whitecap is the wrong tool — see Non-goals.
+
 ## Non-goals
 
 Whitecap intentionally trades HTTP/1.1 conformance for throughput. Clients are expected to be cooperative (the bidder use case). Known and deliberate deviations:
