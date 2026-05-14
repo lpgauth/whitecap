@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.2
+
+### Fixed
+
+- `whitecap:start_listeners/2` is now safe to call more than once per
+  node. Listener processes are registered under names that include the
+  configured port, so a second call with a different `port` no longer
+  collides on `whitecap_listener_<N>` with the first call. Before this
+  fix, the second `start_listeners` call always failed with
+  `{error, {already_started, _}}` as soon as its countdown reached an
+  `N` value already used by the first call (e.g. one listener on
+  metrics port 9091 plus sixteen on the main port would crash on
+  `whitecap_listener_1`).
+
 ## 0.1.1
 
 Dep bumps + CI bootstrap. No source changes.
