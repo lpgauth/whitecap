@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.39.1">
+    <meta name="project" content="whitecap v0.1.0">
+
+
+    <title>whitecap — whitecap v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-erlang-7YNYEB7F.css" />
+
+    <script defer src="dist/sidebar_items-EE41C972.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-HBZYRXZS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+whitecap
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras=""></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of whitecap</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>whitecap</h1>
+
+
+      <a href="https://github.com/lpgauth/whitecap/blob/v0.1.0/README.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p>High-performance Erlang HTTP/1.1 server.</p><p>Whitecap optimizes the hot path of bidder-style traffic: short-lived requests, high concurrency, sub-millisecond targets. It is <strong>not</strong> a fully RFC 7230 conformant server — see <a href="#non-goals">Non-goals</a>.</p><h2 id="install" class="section-heading"><a href="#install" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Install</span></h2><pre><code class="makeup erlang" translate="no"><span class="c1">%% rebar.config</span><span class="w">
+</span><span class="p" data-group-id="0486270812-1">{</span><span class="ss">deps</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="0486270812-2">[</span><span class="w">
+    </span><span class="p" data-group-id="0486270812-3">{</span><span class="ss">whitecap</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span><span class="p" data-group-id="0486270812-3">}</span><span class="w">
+</span><span class="p" data-group-id="0486270812-2">]</span><span class="p" data-group-id="0486270812-1">}</span><span class="p">.</span></code></pre><h2 id="usage" class="section-heading"><a href="#usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Usage</span></h2><p>A handler is any module exporting <code class="inline">handle/2</code>:</p><pre><code class="makeup erlang" translate="no"><span class="p">-</span><span class="na">module</span><span class="p" data-group-id="2350437660-1">(</span><span class="ss">my_handler</span><span class="p" data-group-id="2350437660-1">)</span><span class="p">.</span><span class="w">
+</span><span class="p">-</span><span class="na">export</span><span class="p" data-group-id="2350437660-2">(</span><span class="p" data-group-id="2350437660-3">[</span><span class="ss">handle</span><span class="p">/</span><span class="mi">2</span><span class="p" data-group-id="2350437660-3">]</span><span class="p" data-group-id="2350437660-2">)</span><span class="p">.</span><span class="w">
+
+</span><span class="nf">handle</span><span class="p" data-group-id="2350437660-4">(</span><span class="p">_</span><span class="n">Req</span><span class="p">,</span><span class="w"> </span><span class="p">_</span><span class="n">Opts</span><span class="p" data-group-id="2350437660-4">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w">
+    </span><span class="p" data-group-id="2350437660-5">{</span><span class="ss">ok</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="2350437660-6">{</span><span class="mi">200</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="2350437660-7">[</span><span class="p" data-group-id="2350437660-8">{</span><span class="p" data-group-id="2350437660-9">&lt;&lt;</span><span class="s">&quot;Content-Type&quot;</span><span class="p" data-group-id="2350437660-9">&gt;&gt;</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="2350437660-10">&lt;&lt;</span><span class="s">&quot;text/plain&quot;</span><span class="p" data-group-id="2350437660-10">&gt;&gt;</span><span class="p" data-group-id="2350437660-8">}</span><span class="p" data-group-id="2350437660-7">]</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="2350437660-11">&lt;&lt;</span><span class="s">&quot;hello&quot;</span><span class="p" data-group-id="2350437660-11">&gt;&gt;</span><span class="p" data-group-id="2350437660-6">}</span><span class="p" data-group-id="2350437660-5">}</span><span class="p">.</span></code></pre><p>The return shape is <code class="inline">{ok, {Status, Headers, Body}}</code> where:</p><ul><li><code class="inline">Status</code> is an integer status code (e.g. <code class="inline">200</code>) or <code class="inline">{Code, ReasonBinary}</code> for codes whitecap doesn't know about.</li><li><code class="inline">Headers</code> is a list of <code class="inline">{Key, Value}</code> iodata pairs. <code class="inline">Content-Length</code> is added automatically (except for 204).</li><li><code class="inline">Body</code> is iodata.</li></ul><p>Then start one or more listeners (defaults to four <code class="inline">SO_REUSEPORT</code> acceptors):</p><pre><code class="makeup erlang" translate="no"><span class="p" data-group-id="2946647213-1">{</span><span class="ss">ok</span><span class="p">,</span><span class="w"> </span><span class="p">_</span><span class="p" data-group-id="2946647213-1">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">application</span><span class="p">:</span><span class="nf">ensure_all_started</span><span class="p" data-group-id="2946647213-2">(</span><span class="ss">whitecap</span><span class="p" data-group-id="2946647213-2">)</span><span class="p">,</span><span class="w">
+</span><span class="ss">ok</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">whitecap</span><span class="p">:</span><span class="nf">start_listeners</span><span class="p" data-group-id="2946647213-3">(</span><span class="p" data-group-id="2946647213-4">#{</span><span class="w">
+    </span><span class="ss">handler</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="ss">my_handler</span><span class="p">,</span><span class="w">
+    </span><span class="ss">handler_opts</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="2946647213-5">#{</span><span class="p" data-group-id="2946647213-5">}</span><span class="p">,</span><span class="w">
+    </span><span class="ss">port</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="mi">8080</span><span class="p">,</span><span class="w">
+    </span><span class="ss">ip</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p" data-group-id="2946647213-6">{</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p" data-group-id="2946647213-6">}</span><span class="w">
+</span><span class="p" data-group-id="2946647213-4">}</span><span class="p" data-group-id="2946647213-3">)</span><span class="p">.</span></code></pre><h2 id="configuration" class="section-heading"><a href="#configuration" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Configuration</span></h2><p>Set via <code class="inline">sys.config</code> or <a href="https://www.erlang.org/doc/apps/kernel/application.html#set_env/3"><code class="inline">application:set_env/3</code></a> before <code class="inline">application:start(whitecap)</code>:</p><table><thead><tr><th style="text-align: left;">Key</th><th style="text-align: left;">Default</th><th style="text-align: left;">Meaning</th></tr></thead><tbody><tr><td style="text-align: left;"><code class="inline">max_keepalive</code></td><td style="text-align: left;"><code class="inline">10000</code></td><td style="text-align: left;">Requests served per connection before close.</td></tr><tr><td style="text-align: left;"><code class="inline">receive_timeout</code></td><td style="text-align: left;"><code class="inline">infinity</code></td><td style="text-align: left;"><code class="inline">gen_tcp:recv</code> timeout in ms. Set finite for slowloris protection.</td></tr></tbody></table><h2 id="telemetry" class="section-heading"><a href="#telemetry" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Telemetry</span></h2><p>Events emitted under the <code class="inline">[whitecap, connections, ...]</code> prefix:</p><table><thead><tr><th style="text-align: left;">Event</th><th style="text-align: left;">Measurements</th><th style="text-align: left;">Metadata</th></tr></thead><tbody><tr><td style="text-align: left;"><code class="inline">[whitecap, connections, accept]</code></td><td style="text-align: left;"><code class="inline">#{}</code></td><td style="text-align: left;"><code class="inline">#{}</code></td></tr><tr><td style="text-align: left;"><code class="inline">[whitecap, connections, accept_error]</code></td><td style="text-align: left;"><code class="inline">#{}</code></td><td style="text-align: left;"><code class="inline">#{reason =&gt; term()}</code></td></tr><tr><td style="text-align: left;"><code class="inline">[whitecap, connections, close]</code></td><td style="text-align: left;"><code class="inline">#{}</code></td><td style="text-align: left;"><code class="inline">#{}</code></td></tr><tr><td style="text-align: left;"><code class="inline">[whitecap, connections, stats]</code></td><td style="text-align: left;"><code class="inline">#{duration =&gt; microseconds, keep_alive =&gt; integer()}</code></td><td style="text-align: left;"><code class="inline">#{}</code></td></tr><tr><td style="text-align: left;"><code class="inline">[whitecap, connections, timeout]</code></td><td style="text-align: left;"><code class="inline">#{}</code></td><td style="text-align: left;"><code class="inline">#{}</code></td></tr><tr><td style="text-align: left;"><code class="inline">[whitecap, connections, max_keepalive]</code></td><td style="text-align: left;"><code class="inline">#{}</code></td><td style="text-align: left;"><code class="inline">#{}</code></td></tr></tbody></table><p><code class="inline">duration</code> is microseconds (from <a href="https://www.erlang.org/doc/apps/kernel/os.html#system_time/0"><code class="inline">os:system_time/0</code></a> deltas converted via <a href="https://www.erlang.org/doc/apps/erts/erlang.html#convert_time_unit/3"><code class="inline">erlang:convert_time_unit/3</code></a>).</p><h2 id="non-goals" class="section-heading"><a href="#non-goals" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Non-goals</span></h2><p>Whitecap intentionally trades HTTP/1.1 conformance for throughput. Clients are expected to be cooperative (the bidder use case). Known and deliberate deviations:</p><ul><li><strong>Case-sensitive header matching.</strong> <code class="inline">Content-Length</code> and <code class="inline">Transfer-Encoding</code> must use the exact casing <code class="inline">Content-Length:</code> / <code class="inline">content-length:</code> / <code class="inline">Transfer-Encoding:</code> / <code class="inline">transfer-encoding:</code>. Any other casing is silently ignored. Use canonical casing.</li><li><strong>Strict OWS in header values.</strong> Exactly one space is allowed between the colon and the value.</li><li><strong>No HTTP/1.0.</strong> Status lines must end with <code class="inline">HTTP/1.1</code>. 1.0 requests get <code class="inline">501 Not Implemented</code>.</li><li><strong>No <code class="inline">Transfer-Encoding: chunked</code>.</strong> Returns <code class="inline">501</code>.</li><li><strong>Limited verbs.</strong> GET, HEAD, POST, PUT only.</li><li><strong>No size limits.</strong> Request lines, header sections, and bodies are not bounded. Run whitecap only with trusted clients or a fronting proxy.</li><li><strong>Acceptor does not transfer socket ownership</strong> (<a href="https://www.erlang.org/doc/apps/kernel/gen_tcp.html#controlling_process/2"><code class="inline">gen_tcp:controlling_process/2</code></a> is skipped). Works because connection workers use <code class="inline">{active, false}</code> + synchronous <code class="inline">recv</code>. Don't switch to active mode without revisiting this.</li></ul><h2 id="development" class="section-heading"><a href="#development" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Development</span></h2><pre><code class="makeup erlang" translate="no"><span class="ss">make</span><span class="w"> </span><span class="ss">compile</span><span class="w">       </span><span class="p">#</span><span class="w"> </span><span class="ss">debug_info</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="ss">warn</span><span class="o">-</span><span class="ss">everything</span><span class="w">
+</span><span class="ss">make</span><span class="w"> </span><span class="ss">eunit</span><span class="w">         </span><span class="p">#</span><span class="w"> </span><span class="ss">eunit</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="ss">cover</span><span class="w">
+</span><span class="ss">make</span><span class="w"> </span><span class="ss">xref</span><span class="w">          </span><span class="p">#</span><span class="w"> </span><span class="ss">cross</span><span class="o">-</span><span class="ss">reference</span><span class="w"> </span><span class="ss">checks</span><span class="w">
+</span><span class="ss">make</span><span class="w"> </span><span class="ss">dialyzer</span><span class="w">      </span><span class="p">#</span><span class="w"> </span><span class="ss">success</span><span class="o">-</span><span class="ss">typing</span><span class="w">
+</span><span class="ss">make</span><span class="w"> </span><span class="ss">test</span><span class="w">          </span><span class="p">#</span><span class="w"> </span><span class="ss">xref</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="ss">eunit</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="ss">dialyzer</span><span class="w">
+</span><span class="ss">make</span><span class="w"> </span><span class="ss">profile</span><span class="w">       </span><span class="p">#</span><span class="w"> </span><span class="ss">fprofx</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="ss">cachegrind</span></code></pre><h2 id="license" class="section-heading"><a href="#license" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">License</span></h2><p>MIT.</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="changelog.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Changelog
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+      <p>
+
+          <span class="line">
+            <a href="https://hex.pm/packages/whitecap/0.1.0" class="footer-hex-package">Hex Package</a>
+
+            <a href="https://preview.hex.pm/preview/whitecap/0.1.0">Hex Preview</a>
+
+              (<a href="https://preview.hex.pm/preview/whitecap/0.1.0/show/README.md">current file</a>)
+
+          </span>
+
+        <span class="line">
+          <button class="a-main footer-button display-quick-switch" title="Search HexDocs packages">
+            Search HexDocs
+          </button>
+
+            <a href="whitecap.epub" title="ePub version">
+              Download ePub version
+            </a>
+
+        </span>
+      </p>
+
+      <p class="built-using">
+        Built using
+        <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.39.1) for the
+
+          <a href="https://erlang.org" title="Erlang" target="_blank" translate="no">Erlang programming language</a>
+
+      </p>
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>
