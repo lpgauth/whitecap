@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.3
+
+### Added
+
+- `whitecap:events/0` — returns the list of `telemetry:event_name()`
+  values whitecap emits. Consumers can iterate this list to attach
+  handlers programmatically instead of hardcoding event names that
+  drift across releases:
+
+  ```erlang
+  [telemetry:attach(handler_id_for(E), E, fun handler/4, [])
+      || E <- whitecap:events()].
+  ```
+
+- README gained a "Pipelining and backpressure" section. The
+  per-connection request loop has no concurrent in-flight cap and
+  relies on TCP send buffer pushback to throttle a slow client,
+  which is appropriate for HTTP/1.1 pipelining semantics. The
+  section spells out the contract so callers don't reach for the
+  wrong tool.
+
 ## 0.1.2
 
 ### Fixed
