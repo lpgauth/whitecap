@@ -2,6 +2,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(PORT, 18999).
+-define(SECOND_PORT, 18998).
 
 e2e_test_() ->
     {setup,
@@ -15,7 +16,9 @@ e2e_test_() ->
                 fun pipelined_requests/0},
             {"Unsupported verb closes with 501", fun unsupported_verb/0},
             {"Malformed request line closes with 400",
-                fun malformed_request_line/0}
+                fun malformed_request_line/0},
+            {"Second start_listeners on a different port succeeds",
+                fun second_start_listeners_different_port/0}
         ]}.
 
 start() ->
@@ -57,9 +60,19 @@ malformed_request_line() ->
     {ok, Resp} = req(<<"GARBAGE\r\n\r\n">>),
     ?assertMatch(<<"HTTP/1.1 400 Bad Request", _/binary>>, Resp).
 
+second_start_listeners_different_port() ->
+    ?assertEqual(ok,
+        whitecap:start_listeners(
+            #{handler => test_handler, port => ?SECOND_PORT}, 2)),
+    {ok, Resp} = req(<<"GET / HTTP/1.1\r\nHost: x\r\n\r\n">>, ?SECOND_PORT),
+    ?assertMatch(<<"HTTP/1.1 200 OK", _/binary>>, Resp).
+
 %% private
 req(Bytes) ->
-    {ok, S} = gen_tcp:connect("127.0.0.1", ?PORT,
+    req(Bytes, ?PORT).
+
+req(Bytes, Port) ->
+    {ok, S} = gen_tcp:connect("127.0.0.1", Port,
         [binary, {active, false}], 1000),
     ok = gen_tcp:send(S, Bytes),
     Resp = gen_tcp:recv(S, 0, 1000),
