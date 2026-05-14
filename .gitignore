@@ -4,3 +4,4 @@ fprofx.analysis
 fprofx.cgrind
 output/
 rebar3.crashdump
+doc/
