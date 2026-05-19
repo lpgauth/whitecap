@@ -57,27 +57,42 @@ parse_requests(Data, Req, #state {
                 true ->
                     Headers2 = overwrite_key(Headers, "Connection", "close", false),
                     Response = whitecap_handler:response(Status, Headers2, Body),
-                    gen_tcp:send(Socket, Response),
+                    send(Socket, Response),
                     close(Socket, N + 1, Timestamp),
                     telemetry:execute([whitecap, connections, max_keepalive], #{}),
                     ok;
                 false ->
                     Response = whitecap_handler:response(Status, Headers, Body),
-                    gen_tcp:send(Socket, Response),
-                    parse_requests(Rest, undefined, State, N + 1, Opts)
+                    case send(Socket, Response) of
+                        ok ->
+                            parse_requests(Rest, undefined, State, N + 1, Opts);
+                        {error, _} ->
+                            close(Socket, N + 1, Timestamp),
+                            ok
+                    end
             end;
         {ok, #whitecap_req {} = Req2, Rest} ->
             recv_loop(Rest, Req2, State, N, Opts);
         {error, not_enough_data} ->
             recv_loop(Data, Req, State, N, Opts);
         {error, bad_request} ->
-            gen_tcp:send(Socket, whitecap_handler:response(400, [{"Connection", "close"}])),
+            send(Socket, whitecap_handler:response(400, [{"Connection", "close"}])),
             close(Socket, N, Timestamp),
             ok;
         {error, _Reason} ->
-            gen_tcp:send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
+            send(Socket, whitecap_handler:response(501, [{"Connection", "close"}])),
             close(Socket, N, Timestamp),
             ok
+    end.
+
+send(Socket, Data) ->
+    case gen_tcp:send(Socket, Data) of
+        ok ->
+            ok;
+        {error, Reason} = Error ->
+            telemetry:execute([whitecap, connections, send_error],
+                #{size => iolist_size(Data)}, #{reason => Reason}),
+            Error
     end.
 
 overwrite_key([], Key, Value2, false) ->
@@ -99,7 +114,7 @@ recv_loop(Buffer, Req, #state {socket = Socket, timestamp = Timestamp} = State, 
             end,
             parse_requests(Data2, Req, State, N, Opts);
         {error, timeout} ->
-            gen_tcp:send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
+            send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
             close(Socket, N, Timestamp),
             telemetry:execute([whitecap, connections, timeout], #{}),
             ok;
