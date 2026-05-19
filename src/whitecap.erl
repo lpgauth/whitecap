@@ -21,7 +21,7 @@ start_listeners(Opts) ->
 start_listeners(_Opts, 0) ->
     ok;
 start_listeners(Opts, N) ->
-    case supervisor:start_child(whitecap_sup, ?CHILD(name(N), Opts, whitecap_acceptor)) of
+    case supervisor:start_child(whitecap_sup, ?CHILD(name(N, Opts), Opts, whitecap_acceptor)) of
         {ok, _Pid} ->
             start_listeners(Opts, N - 1);
         {error, _} = Error ->
@@ -29,5 +29,8 @@ start_listeners(Opts, N) ->
     end.
 
 %% private
-name(N) ->
-    list_to_atom("whitecap_listener_" ++ integer_to_list(N)).
+name(N, Opts) ->
+    Port = maps:get(port, Opts, 8080),
+    list_to_atom(
+        "whitecap_listener_" ++ integer_to_list(Port) ++ "_" ++ integer_to_list(N)
+    ).
