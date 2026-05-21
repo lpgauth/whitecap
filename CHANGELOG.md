@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.4
+
+### Changed
+
+- Listen sockets now set `sndbuf=256KB`, `send_timeout=50ms`, and
+  `send_timeout_close=true` so accepted sockets inherit them. The
+  default kernel sndbuf was too small for multi-segment writes
+  under tight RTB timing, where ~20KB responses could be silently
+  dropped.
+
+### Fixed
+
+- `gen_tcp:send` return values are now checked. On error the
+  connection is closed instead of looping back into
+  `parse_requests` against a dead socket, and a
+  `[whitecap, connections, send_error]` telemetry event is emitted
+  with the response size and reason.
+
 ## 0.1.3
 
 ### Added
