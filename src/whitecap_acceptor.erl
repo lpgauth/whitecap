@@ -44,6 +44,9 @@ listen(Ip, Port) ->
         {backlog, 4096},
         {nodelay, true},
         {reuseaddr, true},
+        {sndbuf, 262144},
+        {send_timeout, 50},
+        {send_timeout_close, true},
         {ip, Ip}
     ] ++ so_reuseport(),
 
