@@ -1,4 +1,3 @@
-CACHEGRIND=qcachegrind
 REBAR3=$(shell which rebar3)
 ifeq ($(REBAR3),)
 REBAR3=./bin/rebar3
@@ -30,18 +29,6 @@ edoc:
 eunit:
 	@echo "Running rebar3 eunit..."
 	@$(REBAR3) eunit -cv
-
-profile:
-	@echo "Profiling..."
-	@$(REBAR3) as test compile
-	@erl +K true \
-	     -noshell \
-	     -pa _build/test/lib/*/ebin \
-	     -pa _build/test/lib/*/test \
-		 -eval 'whitecap_profile:fprofx()' \
-		 -eval 'init:stop()'
-	@_build/test/lib/fprofx/erlgrindx -p fprofx.analysis
-	@$(CACHEGRIND) fprofx.cgrind
 
 test: xref eunit dialyzer
 
