@@ -102,7 +102,6 @@ make eunit         # eunit + cover
 make xref          # cross-reference checks
 make dialyzer      # success-typing
 make test          # xref + eunit + dialyzer
-make profile       # fprofx → cachegrind
 ```
 
 ## License
