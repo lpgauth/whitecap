@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+### Changed
+
+- Upgrade foil to 0.1.6.
+- Remove bench and profile tooling, along with the test-profile deps
+  that only served it (buoy, fprofx, timing).
+
 ## 0.1.4
 
 ### Changed
