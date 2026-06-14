@@ -114,3 +114,11 @@ headers_test() ->
         <<"User-Agent: curl/7.54.0">>,
         <<"Content-Length: 5">>
     ])).
+
+headers_no_colon_test() ->
+    ?assertEqual({error, invalid_headers},
+        whitecap_protocol:headers([<<"NoColonHere">>])).
+
+headers_no_space_test() ->
+    ?assertEqual({error, invalid_headers},
+        whitecap_protocol:headers([<<"Host:127.0.0.1">>])).

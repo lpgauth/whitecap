@@ -147,7 +147,9 @@ parse_headers([Header | T], Acc) ->
         [Key, <<>>] ->
             parse_headers(T, [{Key, undefined} | Acc]);
         [Key, <<" ", Value/binary>>] ->
-            parse_headers(T, [{Key, Value} | Acc])
+            parse_headers(T, [{Key, Value} | Acc]);
+        [_Key, _Value] ->
+            {error, invalid_headers}
     end.
 
 parse_status_line(Data, #bin_patterns {rn = Rn}) ->
