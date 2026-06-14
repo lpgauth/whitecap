@@ -7,7 +7,7 @@
 %% internal
 -export([
     recv_loop/2,
-    start_link/2
+    start/2
 ]).
 
 -record(state, {
@@ -17,10 +17,10 @@
 }).
 
 %% public
--spec start_link(gen_tcp:socket(), map()) -> pid().
+-spec start(gen_tcp:socket(), map()) -> pid().
 
-start_link(Socket, Opts) ->
-    proc_lib:spawn_link(?MODULE, recv_loop, [Socket, Opts]).
+start(Socket, Opts) ->
+    proc_lib:spawn(?MODULE, recv_loop, [Socket, Opts]).
 
 -spec recv_loop(gen_tcp:socket(), map()) -> ok.
 

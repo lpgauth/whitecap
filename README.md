@@ -92,7 +92,7 @@ Whitecap intentionally trades HTTP/1.1 conformance for throughput. Clients are e
 - **No `Transfer-Encoding: chunked`.** Returns `501`.
 - **Limited verbs.** GET, HEAD, POST, PUT only.
 - **No size limits.** Request lines, header sections, and bodies are not bounded. Run whitecap only with trusted clients or a fronting proxy.
-- **Acceptor does not transfer socket ownership** (`gen_tcp:controlling_process/2` is skipped). Works because connection workers use `{active, false}` + synchronous `recv`. Don't switch to active mode without revisiting this.
+- **Connection workers run unlinked and own their socket.** Right after `accept`, the acceptor hands the socket to the worker via `gen_tcp:controlling_process/2` and spawns it with `proc_lib:spawn/3` (not `spawn_link`). A worker crash therefore closes only its own socket and cannot take the acceptor — or sibling connections — down with it. Workers use `{active, false}` + synchronous `recv`; don't switch to active mode without revisiting the ownership handoff.
 
 ## Development
 
