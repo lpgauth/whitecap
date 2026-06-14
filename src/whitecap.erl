@@ -19,6 +19,7 @@ events() ->
         [whitecap, connections, accept_error],
         [whitecap, connections, close],
         [whitecap, connections, max_keepalive],
+        [whitecap, connections, send_error],
         [whitecap, connections, stats],
         [whitecap, connections, timeout]
     ].

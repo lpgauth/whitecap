@@ -64,6 +64,7 @@ Events emitted under the `[whitecap, connections, ...]` prefix:
 | `[whitecap, connections, stats]`         | `#{duration => microseconds, keep_alive => integer()}` | `#{}` |
 | `[whitecap, connections, timeout]`       | `#{}`                    | `#{}`           |
 | `[whitecap, connections, max_keepalive]` | `#{}`                    | `#{}`           |
+| `[whitecap, connections, send_error]`    | `#{size => bytes}`       | `#{reason => term()}` |
 
 `duration` is microseconds (from `os:system_time/0` deltas converted via `erlang:convert_time_unit/3`).
 
