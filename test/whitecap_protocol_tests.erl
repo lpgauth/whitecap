@@ -92,6 +92,18 @@ chunked_unsupported_test() ->
     ?assertEqual({error, unsupported_feature},
         whitecap_protocol:request(Req)).
 
+non_integer_content_length_test() ->
+    Req = <<"POST /x HTTP/1.1\r\nContent-Length: abc\r\n\r\n">>,
+    ?assertEqual({error, bad_request}, whitecap_protocol:request(Req)).
+
+empty_content_length_test() ->
+    Req = <<"POST /x HTTP/1.1\r\nContent-Length: \r\n\r\n">>,
+    ?assertEqual({error, bad_request}, whitecap_protocol:request(Req)).
+
+negative_content_length_test() ->
+    Req = <<"POST /x HTTP/1.1\r\nContent-Length: -5\r\n\r\n">>,
+    ?assertEqual({error, bad_request}, whitecap_protocol:request(Req)).
+
 headers_test() ->
     ?assertEqual({ok, [
         {<<"Host">>, <<"127.0.0.1:8080">>},
