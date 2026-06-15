@@ -7,7 +7,7 @@
 %% internal
 -export([
     recv_loop/2,
-    start_link/2
+    start/2
 ]).
 
 -record(state, {
@@ -17,16 +17,17 @@
 }).
 
 %% public
--spec start_link(gen_tcp:socket(), map()) -> pid().
+-spec start(gen_tcp:socket(), map()) -> pid().
 
-start_link(Socket, Opts) ->
-    proc_lib:spawn_link(?MODULE, recv_loop, [Socket, Opts]).
+start(Socket, Opts) ->
+    proc_lib:spawn(?MODULE, recv_loop, [Socket, Opts]).
 
 -spec recv_loop(gen_tcp:socket(), map()) -> ok.
 
 recv_loop(Socket, Opts) ->
+    {ok, BinPatterns} = whitecap_config:get(bin_patterns),
     recv_loop(<<>>, undefined, #state {
-        bin_patterns = persistent_term:get({?APP, bin_patterns}),
+        bin_patterns = BinPatterns,
         socket = Socket,
         timestamp = os:system_time()
     }, 0, Opts).
@@ -53,9 +54,9 @@ parse_requests(Data, Req, #state {
         {ok, #whitecap_req {state = done} = Req2, Rest} ->
             {ok, {Status, Headers, Body}} = whitecap_handler:handle(Req2, Opts),
             {ok, MaxKeepAlive} = whitecap_config:get(max_keepalive),
-            case N == MaxKeepAlive of
+            case N + 1 >= MaxKeepAlive of
                 true ->
-                    Headers2 = overwrite_key(Headers, "Connection", "close", false),
+                    Headers2 = force_connection_close(Headers),
                     Response = whitecap_handler:response(Status, Headers2, Body),
                     send(Socket, Response),
                     close(Socket, N + 1, Timestamp),
@@ -95,14 +96,18 @@ send(Socket, Data) ->
             Error
     end.
 
-overwrite_key([], Key, Value2, false) ->
-    [{Key, Value2}];
-overwrite_key([], _Key, _Value2, true) ->
+force_connection_close(Headers) ->
+    [{<<"Connection">>, <<"close">>} | drop_connection(Headers)].
+
+drop_connection([]) ->
     [];
-overwrite_key([{Key, _Value} | T], Key, Value2, _Overridden) ->
-    [{Key, Value2} | overwrite_key(T, Key, Value2, true)];
-overwrite_key([{Key, Value} | T], Key2, Value2, Overridden) ->
-    [{Key, Value} | overwrite_key(T, Key2, Value2, Overridden)].
+drop_connection([{Key, _Value} = Header | T]) ->
+    case string:equal(Key, <<"connection">>, true) of
+        true ->
+            drop_connection(T);
+        false ->
+            [Header | drop_connection(T)]
+    end.
 
 recv_loop(Buffer, Req, #state {socket = Socket, timestamp = Timestamp} = State, N, Opts) ->
     {ok, ReceiveTimeout} = whitecap_config:get(receive_timeout),

@@ -117,15 +117,26 @@ binary_split_global(Bin, Pattern) ->
 content_length([]) ->
     {ok, undefined};
 content_length([<<"Content-Length: ", Rest/binary>> | _T]) ->
-    {ok, binary_to_integer(Rest)};
+    parse_content_length(Rest);
 content_length([<<"content-length: ", Rest/binary>> | _T]) ->
-    {ok, binary_to_integer(Rest)};
+    parse_content_length(Rest);
 content_length([<<"Transfer-Encoding: chunked">> | _T]) ->
     {error, unsupported_feature};
 content_length([<<"transfer-encoding: chunked">> | _T]) ->
     {error, unsupported_feature};
 content_length([_ | T]) ->
     content_length(T).
+
+parse_content_length(Bin) ->
+    try binary_to_integer(Bin) of
+        N when N >= 0 ->
+            {ok, N};
+        _ ->
+            {error, bad_request}
+    catch
+        error:badarg ->
+            {error, bad_request}
+    end.
 
 parse_headers([], Acc) ->
     {ok, lists:reverse(Acc)};
@@ -136,7 +147,9 @@ parse_headers([Header | T], Acc) ->
         [Key, <<>>] ->
             parse_headers(T, [{Key, undefined} | Acc]);
         [Key, <<" ", Value/binary>>] ->
-            parse_headers(T, [{Key, Value} | Acc])
+            parse_headers(T, [{Key, Value} | Acc]);
+        [_Key, _Value] ->
+            {error, invalid_headers}
     end.
 
 parse_status_line(Data, #bin_patterns {rn = Rn}) ->

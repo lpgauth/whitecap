@@ -1,5 +1,5 @@
 {application, whitecap, [
-  {applications, [foil, kernel, metal, stdlib, telemetry]},
+  {applications, [foil, kernel, stdlib, telemetry]},
   {description, "High-Performance Erlang HTTP 1.1 Server"},
   {env, []},
   {licenses, ["MIT"]},
@@ -7,5 +7,5 @@
   {maintainers, ["Louis-Philippe Gauthier"]},
   {mod, {whitecap_app, []}},
   {registered, []},
-  {vsn, "0.1.4"}
+  {vsn, "0.1.5"}
 ]}.

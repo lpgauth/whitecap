@@ -56,7 +56,8 @@ loop(LSocket, Opts) ->
     case gen_tcp:accept(LSocket) of
         {ok, Socket} ->
             telemetry:execute([whitecap, connections, accept], #{}),
-            whitecap_connection:start_link(Socket, Opts),
+            Pid = whitecap_connection:start(Socket, Opts),
+            _ = gen_tcp:controlling_process(Socket, Pid),
             loop(LSocket, Opts);
         {error, closed} ->
             ok;

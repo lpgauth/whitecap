@@ -31,7 +31,6 @@ stop() ->
 
 start(_StartType, _StartArgs) ->
     whitecap_config:init(),
-    persistent_term:put({?APP, bin_patterns}, whitecap_protocol:bin_patterns()),
     whitecap_sup:start_link().
 
 -spec stop(term()) ->

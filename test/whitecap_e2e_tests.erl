@@ -3,6 +3,7 @@
 
 -define(PORT, 18999).
 -define(SECOND_PORT, 18998).
+-define(CRASH_PORT, 18997).
 
 e2e_test_() ->
     {setup,
@@ -17,6 +18,10 @@ e2e_test_() ->
             {"Unsupported verb closes with 501", fun unsupported_verb/0},
             {"Malformed request line closes with 400",
                 fun malformed_request_line/0},
+            {"Malformed Content-Length closes with 400",
+                fun malformed_content_length/0},
+            {"Crashing handler does not kill the acceptor",
+                fun crashing_handler_isolated/0},
             {"Second start_listeners on a different port succeeds",
                 fun second_start_listeners_different_port/0}
         ]}.
@@ -25,6 +30,8 @@ start() ->
     {ok, _} = application:ensure_all_started(whitecap),
     ok = whitecap:start_listeners(
         #{handler => test_handler, port => ?PORT}, 1),
+    ok = whitecap:start_listeners(
+        #{handler => bad_handler, port => ?CRASH_PORT}, 1),
     ok.
 
 stop(_) ->
@@ -59,6 +66,32 @@ unsupported_verb() ->
 malformed_request_line() ->
     {ok, Resp} = req(<<"GARBAGE\r\n\r\n">>),
     ?assertMatch(<<"HTTP/1.1 400 Bad Request", _/binary>>, Resp).
+
+malformed_content_length() ->
+    {ok, Resp} = req(<<"POST /x HTTP/1.1\r\nContent-Length: abc\r\n\r\n">>),
+    ?assertMatch(<<"HTTP/1.1 400 Bad Request", _/binary>>, Resp),
+    %% server keeps serving after a malformed request
+    {ok, Resp2} = req(<<"GET / HTTP/1.1\r\nHost: x\r\n\r\n">>),
+    ?assertMatch(<<"HTTP/1.1 200 OK", _/binary>>, Resp2).
+
+crashing_handler_isolated() ->
+    Name = list_to_atom(
+        "whitecap_listener_" ++ integer_to_list(?CRASH_PORT) ++ "_1"),
+    Acceptor = whereis(Name),
+    ?assert(is_pid(Acceptor)),
+    %% A burst of crashing connections exceeds the supervisor restart
+    %% intensity if it can kill the acceptor; the app must stay up and
+    %% the acceptor pid must be unchanged.
+    [begin
+        {ok, S} = gen_tcp:connect("127.0.0.1", ?CRASH_PORT,
+            [binary, {active, false}], 1000),
+        gen_tcp:send(S, <<"GET / HTTP/1.1\r\nHost: x\r\n\r\n">>),
+        gen_tcp:recv(S, 0, 200),
+        gen_tcp:close(S)
+     end || _ <- lists:seq(1, 10)],
+    timer:sleep(100),
+    ?assertEqual(Acceptor, whereis(Name)),
+    ?assert(lists:keymember(whitecap, 1, application:which_applications())).
 
 second_start_listeners_different_port() ->
     ?assertEqual(ok,

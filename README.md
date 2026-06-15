@@ -9,7 +9,7 @@ Whitecap optimizes the hot path of bidder-style traffic: short-lived requests, h
 ```erlang
 %% rebar.config
 {deps, [
-    {whitecap, "0.1.0"}
+    {whitecap, "0.1.5"}
 ]}.
 ```
 
@@ -61,9 +61,10 @@ Events emitted under the `[whitecap, connections, ...]` prefix:
 | `[whitecap, connections, accept]`        | `#{}`                    | `#{}`           |
 | `[whitecap, connections, accept_error]`  | `#{}`                    | `#{reason => term()}` |
 | `[whitecap, connections, close]`         | `#{}`                    | `#{}`           |
+| `[whitecap, connections, max_keepalive]` | `#{}`                    | `#{}`           |
+| `[whitecap, connections, send_error]`    | `#{size => bytes}`       | `#{reason => term()}` |
 | `[whitecap, connections, stats]`         | `#{duration => microseconds, keep_alive => integer()}` | `#{}` |
 | `[whitecap, connections, timeout]`       | `#{}`                    | `#{}`           |
-| `[whitecap, connections, max_keepalive]` | `#{}`                    | `#{}`           |
 
 `duration` is microseconds (from `os:system_time/0` deltas converted via `erlang:convert_time_unit/3`).
 
@@ -92,7 +93,7 @@ Whitecap intentionally trades HTTP/1.1 conformance for throughput. Clients are e
 - **No `Transfer-Encoding: chunked`.** Returns `501`.
 - **Limited verbs.** GET, HEAD, POST, PUT only.
 - **No size limits.** Request lines, header sections, and bodies are not bounded. Run whitecap only with trusted clients or a fronting proxy.
-- **Acceptor does not transfer socket ownership** (`gen_tcp:controlling_process/2` is skipped). Works because connection workers use `{active, false}` + synchronous `recv`. Don't switch to active mode without revisiting this.
+- **Connection workers run unlinked and own their socket.** Right after `accept`, the acceptor hands the socket to the worker via `gen_tcp:controlling_process/2` and spawns it with `proc_lib:spawn/3` (not `spawn_link`). A worker crash therefore closes only its own socket and cannot take the acceptor — or sibling connections — down with it. Workers use `{active, false}` + synchronous `recv`; don't switch to active mode without revisiting the ownership handoff.
 
 ## Development
 

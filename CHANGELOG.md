@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.1.5
+
+### Fixed
+
+- A non-integer, empty, or negative `Content-Length` no longer
+  crashes the connection worker. `binary_to_integer/1` threw `badarg`
+  on a non-integer value and a negative length caused a later
+  badmatch; both propagated to the acceptor and, repeated within the
+  supervisor restart window, took the whole application down. Such
+  values now return `400 Bad Request`.
+- A crashing connection worker can no longer take the acceptor (and
+  its sibling connections) down with it. Workers are spawned unlinked
+  with `proc_lib:spawn/3` and own their socket via
+  `gen_tcp:controlling_process/2`, so an abnormal exit closes only
+  that worker's socket.
+- `whitecap_protocol:headers/1` returns `{error, invalid_headers}`
+  for a header value that violates the single-space rule instead of
+  raising `case_clause`.
+- The keep-alive limit served `max_keepalive + 1` requests; it now
+  serves exactly `max_keepalive`. The forced `Connection: close` also
+  overwrites a handler-set `Connection` header of any casing or
+  iodata form instead of emitting a duplicate.
+
+### Changed
+
+- `bin_patterns` is stored in `foil` rather than `persistent_term`,
+  the same mechanism as the rest of the config. foil's
+  compiled-module lookup is faster and carries the compiled patterns
+  through its constant pool.
+- `whitecap:events/0` and the README telemetry table now list the
+  `[whitecap, connections, send_error]` event, which has been emitted
+  since 0.1.4.
+
 ## 0.1.4
 
 ### Changed
