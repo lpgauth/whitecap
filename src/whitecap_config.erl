@@ -10,6 +10,7 @@
 
 init() ->
     foil:new(?MODULE),
+    foil:insert(?MODULE, bin_patterns, whitecap_protocol:bin_patterns()),
     foil:insert(?MODULE, max_keepalive, env(max_keepalive, 10000)),
     foil:insert(?MODULE, receive_timeout, env(receive_timeout, infinity)),
     foil:load(?MODULE).

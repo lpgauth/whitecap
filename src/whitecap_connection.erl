@@ -25,8 +25,9 @@ start(Socket, Opts) ->
 -spec recv_loop(gen_tcp:socket(), map()) -> ok.
 
 recv_loop(Socket, Opts) ->
+    {ok, BinPatterns} = whitecap_config:get(bin_patterns),
     recv_loop(<<>>, undefined, #state {
-        bin_patterns = persistent_term:get({?APP, bin_patterns}),
+        bin_patterns = BinPatterns,
         socket = Socket,
         timestamp = os:system_time()
     }, 0, Opts).
