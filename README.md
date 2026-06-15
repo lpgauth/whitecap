@@ -9,7 +9,7 @@ Whitecap optimizes the hot path of bidder-style traffic: short-lived requests, h
 ```erlang
 %% rebar.config
 {deps, [
-    {whitecap, "0.1.0"}
+    {whitecap, "0.1.5"}
 ]}.
 ```
 
