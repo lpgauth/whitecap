@@ -15,9 +15,13 @@
 ]).
 
 -record(state, {
-    bin_patterns :: whitecap_protocol:bin_patterns(),
-    socket       :: gen_tcp:socket(),
-    timestamp    :: integer()
+    bin_patterns      :: whitecap_protocol:bin_patterns(),
+    handler_timeout   :: timeout(),
+    keepalive_timeout :: timeout(),
+    max_keepalive     :: pos_integer(),
+    request_timeout   :: timeout(),
+    socket            :: gen_tcp:socket(),
+    timestamp         :: integer()
 }).
 
 %% public
@@ -30,8 +34,16 @@ start(Socket, Opts) ->
 
 recv_loop(Socket, Opts) ->
     {ok, BinPatterns} = whitecap_config:get(bin_patterns),
-    recv_loop(<<>>, undefined, #state {
+    {ok, HandlerTimeout} = whitecap_config:get(handler_timeout),
+    {ok, KeepAliveTimeout} = whitecap_config:get(keepalive_timeout),
+    {ok, MaxKeepAlive} = whitecap_config:get(max_keepalive),
+    {ok, RequestTimeout} = whitecap_config:get(request_timeout),
+    recv_loop(<<>>, undefined, undefined, #state {
         bin_patterns = BinPatterns,
+        handler_timeout = HandlerTimeout,
+        keepalive_timeout = KeepAliveTimeout,
+        max_keepalive = MaxKeepAlive,
+        request_timeout = RequestTimeout,
         socket = Socket,
         timestamp = os:system_time()
     }, 0, Opts).
@@ -48,16 +60,19 @@ close(Socket, KeepAlive, Timestamp) ->
 duration(Timestamp) ->
     erlang:convert_time_unit(os:system_time() - Timestamp, native, microsecond).
 
-parse_requests(Data, Req, #state {
+parse_requests(Data, Req, Received, #state {
         bin_patterns = BinPatterns,
+        handler_timeout = HandlerTimeout,
+        max_keepalive = MaxKeepAlive,
         socket = Socket,
         timestamp = Timestamp
     } = State, N, Opts) ->
 
     case whitecap_protocol:request(Data, Req, BinPatterns) of
         {ok, #whitecap_req {state = done} = Req2, Rest} ->
-            {ok, {Status, Headers, Body}} = whitecap_handler:handle(Req2, Opts),
-            {ok, MaxKeepAlive} = whitecap_config:get(max_keepalive),
+            Req3 = Req2#whitecap_req {received = Received},
+            {ok, {Status, Headers, Body}} =
+                whitecap_handler:handle(Req3, Opts, HandlerTimeout),
             case N + 1 >= MaxKeepAlive of
                 true ->
                     Headers2 = force_connection_close(Headers),
@@ -71,16 +86,16 @@ parse_requests(Data, Req, #state {
                     case send(Socket, Response) of
                         ok ->
                             maybe_collect_garbage(),
-                            parse_requests(Rest, undefined, State, N + 1, Opts);
+                            parse_requests(Rest, undefined, Received, State, N + 1, Opts);
                         {error, _} ->
                             close(Socket, N + 1, Timestamp),
                             ok
                     end
             end;
         {ok, #whitecap_req {} = Req2, Rest} ->
-            recv_loop(Rest, Req2, State, N, Opts);
+            recv_loop(Rest, Req2, Received, State, N, Opts);
         {error, not_enough_data} ->
-            recv_loop(Data, Req, State, N, Opts);
+            recv_loop(Data, Req, Received, State, N, Opts);
         {error, bad_request} ->
             send(Socket, whitecap_handler:response(400, [{"Connection", "close"}])),
             close(Socket, N, Timestamp),
@@ -122,15 +137,36 @@ drop_connection([{Key, _Value} = Header | T]) ->
             [Header | drop_connection(T)]
     end.
 
-recv_loop(Buffer, Req, #state {socket = Socket, timestamp = Timestamp} = State, N, Opts) ->
-    {ok, ReceiveTimeout} = whitecap_config:get(receive_timeout),
-    case gen_tcp:recv(Socket, 0, ReceiveTimeout) of
+%% Once a request is in flight (buffered bytes or a partially-read body)
+%% the idle keep-alive timeout no longer applies; the shorter request
+%% timeout bounds how long we wait for the rest to arrive.
+recv_timeout(<<>>, undefined, #state {keepalive_timeout = KeepAliveTimeout}) ->
+    KeepAliveTimeout;
+recv_timeout(_Buffer, _Req, #state {request_timeout = RequestTimeout}) ->
+    RequestTimeout.
+
+%% With a known Content-Length still outstanding, ask for exactly the
+%% remaining bytes so the body lands in one recv and one concat instead
+%% of repeatedly re-buffering partial reads.
+recv_length(Buffer, #whitecap_req {state = body, content_length = ContentLength}) ->
+    ContentLength - byte_size(Buffer);
+recv_length(_Buffer, _Req) ->
+    0.
+
+recv_loop(Buffer, Req, Received, #state {socket = Socket, timestamp = Timestamp} = State, N, Opts) ->
+    Timeout = recv_timeout(Buffer, Req, State),
+    RecvLength = recv_length(Buffer, Req),
+    case gen_tcp:recv(Socket, RecvLength, Timeout) of
         {ok, Data} ->
+            Received2 = case {Buffer, Req} of
+                {<<>>, undefined} -> os:system_time();
+                _ -> Received
+            end,
             Data2 = case Buffer of
                 <<>> -> Data;
                 _ -> <<Buffer/binary, Data/binary>>
             end,
-            parse_requests(Data2, Req, State, N, Opts);
+            parse_requests(Data2, Req, Received2, State, N, Opts);
         {error, timeout} ->
             send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
             close(Socket, N, Timestamp),

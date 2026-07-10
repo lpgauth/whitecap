@@ -9,7 +9,8 @@
     path           :: binary(),
     headers        :: [binary()],
     content_length :: undefined | non_neg_integer(),
-    body           :: undefined | binary()
+    body           :: undefined | binary(),
+    received       :: undefined | integer()
 }).
 
 -type verb()         :: get | head | post | put.
