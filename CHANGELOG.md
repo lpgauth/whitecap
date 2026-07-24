@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.6
+
+### Changed
+
+- Connection workers now proactively garbage-collect after sending a
+  response when their heap grows past ~64K words (half of ERTS's
+  `ERTS_POTENTIALLY_LONG_GC_HSIZE`). Above that threshold ERTS
+  schedules a process's collection on a dirty CPU scheduler; with
+  thousands of connections that offloading could starve the dirty
+  schedulers, so the collection is forced inline instead.
+
 ## 0.1.5
 
 ### Fixed
