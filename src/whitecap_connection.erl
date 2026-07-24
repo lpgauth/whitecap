@@ -4,6 +4,10 @@
 -compile(inline).
 -compile({inline_size, 512}).
 
+% ERTS_POTENTIALLY_LONG_GC_HSIZE * 0.5
+% As of 2026-07-24, erl_gc.h defines this as (128*1024) words
+-define(GC_THRESHOLD, 65535).
+
 %% internal
 -export([
     recv_loop/2,
@@ -66,6 +70,7 @@ parse_requests(Data, Req, #state {
                     Response = whitecap_handler:response(Status, Headers, Body),
                     case send(Socket, Response) of
                         ok ->
+                            maybe_collect_garbage(),
                             parse_requests(Rest, undefined, State, N + 1, Opts);
                         {error, _} ->
                             close(Socket, N + 1, Timestamp),
@@ -94,6 +99,14 @@ send(Socket, Data) ->
             telemetry:execute([whitecap, connections, send_error],
                 #{size => iolist_size(Data)}, #{reason => Reason}),
             Error
+    end.
+
+maybe_collect_garbage() ->
+    case process_info(self(), total_heap_size) of
+        {total_heap_size, W} when W > ?GC_THRESHOLD ->
+            erlang:garbage_collect();
+        _ ->
+            ok
     end.
 
 force_connection_close(Headers) ->
