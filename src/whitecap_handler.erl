@@ -37,9 +37,13 @@ handle(Req, Opts, Timeout) ->
             logger:error("whitecap handler crashed: ~p", [Reason]),
             {ok, {500, [], <<>>}}
     after Timeout ->
-        erlang:demonitor(MRef, [flush]),
         exit(Pid, kill),
-        receive {Ref, _} -> ok after 0 -> ok end,
+        receive
+            {Ref, _} ->
+                receive {'DOWN', MRef, process, _Pid, _} -> ok end;
+            {'DOWN', MRef, process, _Pid, _} ->
+                ok
+        end,
         telemetry:execute([whitecap, handler, timeout], #{}),
         {ok, {504, [], <<>>}}
     end.
