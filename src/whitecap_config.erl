@@ -9,10 +9,13 @@
 -spec init() -> ok.
 
 init() ->
+    ReceiveTimeout = env(receive_timeout, infinity),
     foil:new(?MODULE),
     foil:insert(?MODULE, bin_patterns, whitecap_protocol:bin_patterns()),
+    foil:insert(?MODULE, handler_timeout, env(handler_timeout, infinity)),
+    foil:insert(?MODULE, keepalive_timeout, env(keepalive_timeout, ReceiveTimeout)),
     foil:insert(?MODULE, max_keepalive, env(max_keepalive, 10000)),
-    foil:insert(?MODULE, receive_timeout, env(receive_timeout, infinity)),
+    foil:insert(?MODULE, request_timeout, env(request_timeout, ReceiveTimeout)),
     foil:load(?MODULE).
 
 -spec get(atom()) -> {ok, term()} | {error, key_not_found}.

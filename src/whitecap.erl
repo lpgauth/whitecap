@@ -21,7 +21,8 @@ events() ->
         [whitecap, connections, max_keepalive],
         [whitecap, connections, send_error],
         [whitecap, connections, stats],
-        [whitecap, connections, timeout]
+        [whitecap, connections, timeout],
+        [whitecap, handler, timeout]
     ].
 
 -spec start_listeners(map()) ->

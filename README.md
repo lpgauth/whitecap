@@ -31,6 +31,12 @@ The return shape is `{ok, {Status, Headers, Body}}` where:
 - `Headers` is a list of `{Key, Value}` iodata pairs. `Content-Length` is added automatically (except for 204).
 - `Body` is iodata.
 
+The `#whitecap_req{}` record (see `include/whitecap.hrl`) carries a `received` field: `os:system_time()` in native units, stamped when the first byte of the request arrived. A handler with a deadline (e.g. an RTB `tmax`) can compute the time already spent on the wire and shed accordingly:
+
+```erlang
+Elapsed = erlang:convert_time_unit(os:system_time() - Received, native, microsecond).
+```
+
 Then start one or more listeners (defaults to four `SO_REUSEPORT` acceptors):
 
 ```erlang
@@ -47,14 +53,17 @@ ok = whitecap:start_listeners(#{
 
 Set via `sys.config` or `application:set_env/3` before `application:start(whitecap)`:
 
-| Key               | Default    | Meaning                                         |
-| ----------------- | ---------- | ----------------------------------------------- |
-| `max_keepalive`   | `10000`    | Requests served per connection before close.    |
-| `receive_timeout` | `infinity` | `gen_tcp:recv` timeout in ms. Set finite for slowloris protection. |
+| Key                 | Default    | Meaning                                         |
+| ------------------- | ---------- | ----------------------------------------------- |
+| `handler_timeout`   | `infinity` | Max handler run time in ms. A finite value runs the handler in a monitored process; a handler that overruns is killed with `exit(kill)` and the request answered with `504`. The kill does not release resources the handler held (pool checkouts, locks), so keep such handlers side-effect-safe. Leave `infinity` (no per-request process) when the handler enforces its own deadline. |
+| `keepalive_timeout` | `infinity` | Idle `gen_tcp:recv` timeout in ms while waiting for the *next* request on a keep-alive connection. |
+| `max_keepalive`     | `10000`    | Requests served per connection before close.    |
+| `receive_timeout`   | `infinity` | **Deprecated.** Back-compat default for `keepalive_timeout` and `request_timeout` when they are unset. |
+| `request_timeout`   | `infinity` | `gen_tcp:recv` timeout in ms *once a request has started arriving*. Set finite for slowloris protection without dropping healthy idle keep-alive connections. |
 
 ## Telemetry
 
-Events emitted under the `[whitecap, connections, ...]` prefix:
+Events emitted under the `[whitecap, ...]` prefix:
 
 | Event                              | Measurements             | Metadata        |
 | ---------------------------------- | ------------------------ | --------------- |
@@ -65,6 +74,9 @@ Events emitted under the `[whitecap, connections, ...]` prefix:
 | `[whitecap, connections, send_error]`    | `#{size => bytes}`       | `#{reason => term()}` |
 | `[whitecap, connections, stats]`         | `#{duration => microseconds, keep_alive => integer()}` | `#{}` |
 | `[whitecap, connections, timeout]`       | `#{}`                    | `#{}`           |
+| `[whitecap, handler, timeout]`           | `#{}`                    | `#{}`           |
+
+`[whitecap, handler, timeout]` fires when a finite `handler_timeout` is exceeded and the request is answered with `504`.
 
 `duration` is microseconds (from `os:system_time/0` deltas converted via `erlang:convert_time_unit/3`).
 
@@ -76,7 +88,7 @@ Events emitted under the `[whitecap, connections, ...]` prefix:
 
 ## Pipelining and backpressure
 
-Each connection worker is a single process serving a per-connection request loop with `gen_tcp:recv(Socket, 0, ReceiveTimeout)` + per-request `handle_request`. There is **no concurrent in-flight cap per connection** — whitecap reads, dispatches, and writes one request at a time on the same socket. That is appropriate because:
+Each connection worker is a single process serving a per-connection request loop: `gen_tcp:recv` for the request line and headers, an exact-length `recv` for a body with a known `Content-Length`, then per-request dispatch. There is **no concurrent in-flight cap per connection** — whitecap reads, dispatches, and writes one request at a time on the same socket. That is appropriate because:
 
 - HTTP/1.1 pipelining is a sequence of requests sharing a socket; clients are expected to wait for response N before reading response N+1. Whitecap matches that contract.
 - All connection-level backpressure comes from the TCP send buffer: if the client stops draining responses, the next `gen_tcp:send` blocks the connection worker, naturally throttling that one socket.

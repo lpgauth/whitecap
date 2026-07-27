@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `#whitecap_req{}` carries a `received` field: `os:system_time()` in
+  native units, stamped when the first byte of the request arrived. A
+  handler with a deadline (e.g. an RTB `tmax`) can measure the time
+  already spent on the wire and shed accordingly.
+- `handler_timeout` config (default `infinity`). A finite value runs
+  the handler in a monitored process and, if it overruns, kills it and
+  answers `504`, emitting a `[whitecap, handler, timeout]` telemetry
+  event. `infinity` keeps the handler inline with no per-request
+  process — the right choice when the handler enforces its own
+  deadline.
+
+### Changed
+
+- The single `receive_timeout` is split into `keepalive_timeout` (idle
+  wait for the next request on a keep-alive connection) and
+  `request_timeout` (per-read wait once a request has started
+  arriving). This allows a short in-request deadline for slowloris
+  protection without dropping healthy idle keep-alive connections.
+  `receive_timeout`, if set, remains the back-compat default for both;
+  all three still default to `infinity`, so behaviour is unchanged
+  unless a finite `request_timeout` is configured.
+- A body with a known `Content-Length` is now read with an exact-length
+  `gen_tcp:recv`, so it lands in one read and one concatenation instead
+  of repeatedly re-buffering partial reads (previously O(n²) on a body
+  fragmented across TCP segments).
+- Per-connection config (`handler_timeout`, `keepalive_timeout`,
+  `max_keepalive`, `request_timeout`) is read once when the connection
+  starts rather than on every request/read.
+
 ## 0.1.6
 
 ### Changed
