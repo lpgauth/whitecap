@@ -55,7 +55,7 @@ Set via `sys.config` or `application:set_env/3` before `application:start(whitec
 
 | Key                 | Default    | Meaning                                         |
 | ------------------- | ---------- | ----------------------------------------------- |
-| `handler_timeout`   | `infinity` | Max handler run time in ms. A finite value runs the handler in a monitored process; a handler that overruns is killed and the request answered with `504`. Leave `infinity` (no per-request process) when the handler enforces its own deadline. |
+| `handler_timeout`   | `infinity` | Max handler run time in ms. A finite value runs the handler in a monitored process; a handler that overruns is killed with `exit(kill)` and the request answered with `504`. The kill does not release resources the handler held (pool checkouts, locks), so keep such handlers side-effect-safe. Leave `infinity` (no per-request process) when the handler enforces its own deadline. |
 | `keepalive_timeout` | `infinity` | Idle `gen_tcp:recv` timeout in ms while waiting for the *next* request on a keep-alive connection. |
 | `max_keepalive`     | `10000`    | Requests served per connection before close.    |
 | `receive_timeout`   | `infinity` | **Deprecated.** Back-compat default for `keepalive_timeout` and `request_timeout` when they are unset. |
