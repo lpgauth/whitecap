@@ -106,26 +106,16 @@ request(Data, #whitecap_req {
     {ok, Req, Data}.
 
 %% private
-binary_split_global(Bin, Pattern) ->
-    case binary:split(Bin, Pattern) of
-        [Split, Rest] ->
-            [Split | binary_split_global(Rest, Pattern)];
-        Rest ->
-            Rest
-    end.
-
-content_length([]) ->
-    {ok, undefined};
-content_length([<<"Content-Length: ", Rest/binary>> | _T]) ->
+content_length(<<"Content-Length: ", Rest/binary>>, undefined) ->
     parse_content_length(Rest);
-content_length([<<"content-length: ", Rest/binary>> | _T]) ->
+content_length(<<"content-length: ", Rest/binary>>, undefined) ->
     parse_content_length(Rest);
-content_length([<<"Transfer-Encoding: chunked">> | _T]) ->
+content_length(<<"Transfer-Encoding: chunked">>, undefined) ->
     {error, unsupported_feature};
-content_length([<<"transfer-encoding: chunked">> | _T]) ->
+content_length(<<"transfer-encoding: chunked">>, undefined) ->
     {error, unsupported_feature};
-content_length([_ | T]) ->
-    content_length(T).
+content_length(_Header, ContentLength) ->
+    {ok, ContentLength}.
 
 parse_content_length(Bin) ->
     try binary_to_integer(Bin) of
@@ -189,10 +179,32 @@ split_headers(Data, #bin_patterns {rn = Rn, rnrn = RnRn}) ->
         [Data] ->
             {error, not_enough_data};
         [Headers, Rest] ->
-            Headers2 = binary_split_global(Headers, Rn),
-            case content_length(Headers2) of
-                {ok, ContentLength} ->
+            case split_header_lines(Headers, Rn, undefined) of
+                {ok, Headers2, ContentLength} ->
                     {ContentLength, Headers2, Rest};
+                {error, Reason} ->
+                    {error, Reason}
+            end
+    end.
+
+split_header_lines(Bin, Rn, ContentLength) ->
+    case binary:split(Bin, Rn) of
+        [Header, Rest] ->
+            case content_length(Header, ContentLength) of
+                {ok, ContentLength2} ->
+                    case split_header_lines(Rest, Rn, ContentLength2) of
+                        {ok, Headers, ContentLength3} ->
+                            {ok, [Header | Headers], ContentLength3};
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
+            end;
+        [Header] ->
+            case content_length(Header, ContentLength) of
+                {ok, ContentLength2} ->
+                    {ok, [Header], ContentLength2};
                 {error, Reason} ->
                     {error, Reason}
             end
