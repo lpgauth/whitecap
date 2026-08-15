@@ -1,9 +1,6 @@
 -module(whitecap_connection).
 -include("whitecap.hrl").
 
--compile(inline).
--compile({inline_size, 512}).
-
 -define(SEND_TIMEOUT, 50).
 
 %% internal

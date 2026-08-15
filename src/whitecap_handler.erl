@@ -1,9 +1,6 @@
 -module(whitecap_handler).
 -include("whitecap.hrl").
 
--compile(inline).
--compile({inline_size, 512}).
-
 -export([handle/2, handle/3, response/2, response/3]).
 
 -type status()  :: non_neg_integer() | {non_neg_integer(), iodata()}.

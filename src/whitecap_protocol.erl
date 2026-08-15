@@ -1,9 +1,6 @@
 -module(whitecap_protocol).
 -include("whitecap.hrl").
 
--compile(inline).
--compile({inline_size, 512}).
-
 -export([
     bin_patterns/0,
     headers/1,
