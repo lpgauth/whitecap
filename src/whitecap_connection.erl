@@ -7,6 +7,7 @@
 % ERTS_POTENTIALLY_LONG_GC_HSIZE * 0.5
 % As of 2026-07-24, erl_gc.h defines this as (128*1024) words
 -define(GC_THRESHOLD, 65535).
+-define(SEND_TIMEOUT, 50).
 
 %% internal
 -export([
@@ -15,22 +16,24 @@
 ]).
 
 -record(state, {
+    armed = false     :: boolean(),
     bin_patterns      :: whitecap_protocol:bin_patterns(),
+    handle            :: reference(),
     handler_timeout   :: timeout(),
     keepalive_timeout :: timeout(),
     max_keepalive     :: pos_integer(),
     request_timeout   :: timeout(),
-    socket            :: gen_tcp:socket(),
+    socket            :: socket:socket(),
     timestamp         :: integer()
 }).
 
 %% public
--spec start(gen_tcp:socket(), map()) -> pid().
+-spec start(socket:socket(), map()) -> pid().
 
 start(Socket, Opts) ->
     proc_lib:spawn(?MODULE, recv_loop, [Socket, Opts]).
 
--spec recv_loop(gen_tcp:socket(), map()) -> ok.
+-spec recv_loop(socket:socket(), map()) -> ok.
 
 recv_loop(Socket, Opts) ->
     {ok, BinPatterns} = whitecap_config:get(bin_patterns),
@@ -40,6 +43,7 @@ recv_loop(Socket, Opts) ->
     {ok, RequestTimeout} = whitecap_config:get(request_timeout),
     recv_loop(<<>>, undefined, undefined, #state {
         bin_patterns = BinPatterns,
+        handle = make_ref(),
         handler_timeout = HandlerTimeout,
         keepalive_timeout = KeepAliveTimeout,
         max_keepalive = MaxKeepAlive,
@@ -50,7 +54,7 @@ recv_loop(Socket, Opts) ->
 
 %% private
 close(Socket, KeepAlive, Timestamp) ->
-    gen_tcp:close(Socket),
+    _ = socket:close(Socket),
     telemetry:execute([whitecap, connections, close], #{}),
     telemetry:execute([whitecap, connections, stats], #{
         duration => duration(Timestamp),
@@ -107,14 +111,21 @@ parse_requests(Data, Req, Received, #state {
     end.
 
 send(Socket, Data) ->
-    case gen_tcp:send(Socket, Data) of
+    case socket:send(Socket, Data, ?SEND_TIMEOUT) of
         ok ->
             ok;
-        {error, Reason} = Error ->
+        {error, Reason} ->
             telemetry:execute([whitecap, connections, send_error],
-                #{size => iolist_size(Data)}, #{reason => Reason}),
-            Error
+                #{size => iolist_size(Data)}, #{reason => reason(Reason)}),
+            {error, Reason}
     end.
+
+%% socket returns {error, {Reason, PartialData}} when bytes were
+%% transferred before the failure; strip the data for matching.
+reason({Reason, _Data}) ->
+    Reason;
+reason(Reason) ->
+    Reason.
 
 maybe_collect_garbage() ->
     case process_info(self(), total_heap_size) of
@@ -153,29 +164,60 @@ recv_length(Buffer, #whitecap_req {state = body, content_length = ContentLength}
 recv_length(_Buffer, _Req) ->
     0.
 
-recv_loop(Buffer, Req, Received, #state {socket = Socket, timestamp = Timestamp} = State, N, Opts) ->
+%% The accepted socket has {otp, select_read} enabled: every successful
+%% recv re-arms the read select inside the same NIF call, so the steady
+%% state is one $socket message plus one recv per request instead of a
+%% recv that fails with EAGAIN, a select, and a second recv.
+recv_loop(Buffer, Req, Received, #state {armed = false} = State, N, Opts) ->
+    do_recv(Buffer, Req, Received, State, N, Opts);
+recv_loop(Buffer, Req, Received, #state {
+        handle = Handle,
+        socket = Socket,
+        timestamp = Timestamp
+    } = State, N, Opts) ->
+
     Timeout = recv_timeout(Buffer, Req, State),
+    receive
+        {'$socket', Socket, select, Handle} ->
+            do_recv(Buffer, Req, Received, State, N, Opts);
+        {'$socket', Socket, abort, {Handle, _Reason}} ->
+            close(Socket, N, Timestamp),
+            ok
+    after Timeout ->
+        send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
+        telemetry:execute([whitecap, connections, timeout], #{}),
+        close(Socket, N, Timestamp),
+        ok
+    end.
+
+do_recv(Buffer, Req, Received, #state {
+        handle = Handle,
+        socket = Socket,
+        timestamp = Timestamp
+    } = State, N, Opts) ->
+
     RecvLength = recv_length(Buffer, Req),
-    case gen_tcp:recv(Socket, RecvLength, Timeout) of
+    case socket:recv(Socket, RecvLength, [], Handle) of
+        {select_read, {_SelectInfo, Data}} ->
+            handle_data(Data, Buffer, Req, Received, State#state {armed = true}, N, Opts);
         {ok, Data} ->
-            Received2 = case {Buffer, Req} of
-                {<<>>, undefined} -> os:system_time();
-                _ -> Received
-            end,
-            Data2 = case Buffer of
-                <<>> -> Data;
-                _ -> <<Buffer/binary, Data/binary>>
-            end,
-            parse_requests(Data2, Req, Received2, State, N, Opts);
-        {error, timeout} ->
-            send(Socket, whitecap_handler:response(408, [{"Connection", "close"}])),
-            close(Socket, N, Timestamp),
-            telemetry:execute([whitecap, connections, timeout], #{}),
-            ok;
-        {error, closed} ->
-            close(Socket, N, Timestamp),
-            ok;
-        {error, etimedout} ->
+            handle_data(Data, Buffer, Req, Received, State#state {armed = false}, N, Opts);
+        {select, {_SelectInfo, Data}} ->
+            handle_data(Data, Buffer, Req, Received, State#state {armed = true}, N, Opts);
+        {select, _SelectInfo} ->
+            recv_loop(Buffer, Req, Received, State#state {armed = true}, N, Opts);
+        {error, _Reason} ->
             close(Socket, N, Timestamp),
             ok
     end.
+
+handle_data(Data, Buffer, Req, Received, State, N, Opts) ->
+    Received2 = case {Buffer, Req} of
+        {<<>>, undefined} -> os:system_time();
+        _ -> Received
+    end,
+    Data2 = case Buffer of
+        <<>> -> Data;
+        _ -> <<Buffer/binary, Data/binary>>
+    end,
+    parse_requests(Data2, Req, Received2, State, N, Opts).

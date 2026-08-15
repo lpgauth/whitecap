@@ -38,26 +38,32 @@ init(Name, Opts, Parent) ->
 
 %% private
 listen(Ip, Port) ->
-    Options = [
-        binary,
-        {active, false},
-        {backlog, 4096},
-        {nodelay, true},
-        {reuseaddr, true},
-        {sndbuf, 262144},
-        {send_timeout, 50},
-        {send_timeout_close, true},
-        {ip, Ip}
-    ] ++ so_reuseport(),
-
-    gen_tcp:listen(Port, Options).
+    case socket:open(inet, stream, tcp) of
+        {ok, LSocket} ->
+            try
+                ok = socket:setopt(LSocket, {socket, reuseaddr}, true),
+                ok = so_reuseport(LSocket),
+                ok = socket:setopt(LSocket, {socket, sndbuf}, 262144),
+                ok = socket:bind(LSocket, #{family => inet, addr => Ip, port => Port}),
+                ok = socket:listen(LSocket, 4096),
+                {ok, LSocket}
+            catch
+                error:{badmatch, {error, _} = Error} ->
+                    _ = socket:close(LSocket),
+                    Error
+            end;
+        {error, _} = Error ->
+            Error
+    end.
 
 loop(LSocket, Opts) ->
-    case gen_tcp:accept(LSocket) of
+    case socket:accept(LSocket) of
         {ok, Socket} ->
             telemetry:execute([whitecap, connections, accept], #{}),
+            _ = socket:setopt(Socket, {tcp, nodelay}, true),
+            _ = socket:setopt(Socket, {otp, select_read}, true),
             Pid = whitecap_connection:start(Socket, Opts),
-            _ = gen_tcp:controlling_process(Socket, Pid),
+            _ = socket:setopt(Socket, {otp, controlling_process}, Pid),
             loop(LSocket, Opts);
         {error, closed} ->
             ok;
@@ -77,12 +83,10 @@ safe_register(Name) ->
             {false, whereis(Name)}
     end.
 
-so_reuseport() ->
+so_reuseport(LSocket) ->
     case os:type() of
-        {unix, linux} ->
-            [{raw, 1, 15, <<1:32/native>>}];
-        {unix, darwin} ->
-            [{raw, 16#ffff, 16#0200, <<1:32/native>>}];
+        {unix, OS} when OS =:= darwin; OS =:= linux ->
+            socket:setopt(LSocket, {socket, reuseport}, true);
         _ ->
-            []
+            ok
     end.
