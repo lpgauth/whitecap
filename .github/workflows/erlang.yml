@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        erlang: [27, 28, 29]
+        erlang: [28, 29]
 
     container:
       image: erlang:${{ matrix.erlang }}
@@ -18,8 +18,5 @@ jobs:
       run: make xref
     - name: Run eunit
       run: make eunit
-    # OTP 27.3 supports {otp, select_read} but its socket specs predate
-    # it, so dialyzer rejects valid code there
     - name: Run dialyzer
-      if: ${{ matrix.erlang != 27 }}
       run: make dialyzer
