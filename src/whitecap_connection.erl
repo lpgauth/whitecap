@@ -105,13 +105,20 @@ parse_requests(Data, Req, Received, #state {
             ok
     end.
 
+%% socket:send flattens iolists with list_to_binary on every call;
+%% sendv keeps the iovec and writes it in one NIF call
 send(Socket, Data) ->
-    case socket:send(Socket, Data, ?SEND_TIMEOUT) of
+    sendv(Socket, erlang:iolist_to_iovec(Data)).
+
+sendv(Socket, IOV) ->
+    case socket:sendv(Socket, IOV, ?SEND_TIMEOUT) of
         ok ->
             ok;
+        {ok, RestIOV} ->
+            sendv(Socket, RestIOV);
         {error, Reason} ->
             telemetry:execute([whitecap, connections, send_error],
-                #{size => iolist_size(Data)}, #{reason => reason(Reason)}),
+                #{size => iolist_size(IOV)}, #{reason => reason(Reason)}),
             {error, Reason}
     end.
 
