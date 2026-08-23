@@ -1,9 +1,6 @@
 -module(whitecap_handler).
 -include("whitecap.hrl").
 
--compile(inline).
--compile({inline_size, 512}).
-
 -export([handle/2, handle/3, response/2, response/3]).
 
 -type status()  :: non_neg_integer() | {non_neg_integer(), iodata()}.
@@ -61,6 +58,13 @@ response(204, Headers, Body) ->
 response({204, _} = Status, Headers, Body) ->
     [format_status(Status), format_headers(Headers), <<"\r\n">>, Body];
 
+response(Status, Headers, <<>>) ->
+    Headers2 = [{<<"Content-Length">>, <<"0">>} | Headers],
+    [format_status(Status), format_headers(Headers2), <<"\r\n">>];
+response(Status, Headers, Body) when is_binary(Body) ->
+    ContentLength = integer_to_binary(byte_size(Body)),
+    Headers2 = [{<<"Content-Length">>, ContentLength} | Headers],
+    [format_status(Status), format_headers(Headers2), <<"\r\n">>, Body];
 response(Status, Headers, Body) ->
     ContentLength = integer_to_binary(iolist_size(Body)),
     Headers2 = [{<<"Content-Length">>, ContentLength} | Headers],

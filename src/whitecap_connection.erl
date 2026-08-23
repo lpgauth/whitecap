@@ -1,12 +1,6 @@
 -module(whitecap_connection).
 -include("whitecap.hrl").
 
--compile(inline).
--compile({inline_size, 512}).
-
-% ERTS_POTENTIALLY_LONG_GC_HSIZE * 0.5
-% As of 2026-07-24, erl_gc.h defines this as (128*1024) words
--define(GC_THRESHOLD, 65535).
 -define(SEND_TIMEOUT, 50).
 
 %% internal
@@ -64,6 +58,8 @@ close(Socket, KeepAlive, Timestamp) ->
 duration(Timestamp) ->
     erlang:convert_time_unit(os:system_time() - Timestamp, native, microsecond).
 
+parse_requests(<<>>, undefined, Received, State, N, Opts) ->
+    recv_loop(<<>>, undefined, Received, State, N, Opts);
 parse_requests(Data, Req, Received, #state {
         bin_patterns = BinPatterns,
         handler_timeout = HandlerTimeout,
@@ -89,7 +85,6 @@ parse_requests(Data, Req, Received, #state {
                     Response = whitecap_handler:response(Status, Headers, Body),
                     case send(Socket, Response) of
                         ok ->
-                            maybe_collect_garbage(),
                             parse_requests(Rest, undefined, Received, State, N + 1, Opts);
                         {error, _} ->
                             close(Socket, N + 1, Timestamp),
@@ -110,13 +105,20 @@ parse_requests(Data, Req, Received, #state {
             ok
     end.
 
+%% socket:send flattens iolists with list_to_binary on every call;
+%% sendv keeps the iovec and writes it in one NIF call
 send(Socket, Data) ->
-    case socket:send(Socket, Data, ?SEND_TIMEOUT) of
+    sendv(Socket, erlang:iolist_to_iovec(Data)).
+
+sendv(Socket, IOV) ->
+    case socket:sendv(Socket, IOV, ?SEND_TIMEOUT) of
         ok ->
             ok;
+        {ok, RestIOV} ->
+            sendv(Socket, RestIOV);
         {error, Reason} ->
             telemetry:execute([whitecap, connections, send_error],
-                #{size => iolist_size(Data)}, #{reason => reason(Reason)}),
+                #{size => iolist_size(IOV)}, #{reason => reason(Reason)}),
             {error, Reason}
     end.
 
@@ -126,14 +128,6 @@ reason({Reason, _Data}) ->
     Reason;
 reason(Reason) ->
     Reason.
-
-maybe_collect_garbage() ->
-    case process_info(self(), total_heap_size) of
-        {total_heap_size, W} when W > ?GC_THRESHOLD ->
-            erlang:garbage_collect();
-        _ ->
-            ok
-    end.
 
 force_connection_close(Headers) ->
     [{<<"Connection">>, <<"close">>} | drop_connection(Headers)].

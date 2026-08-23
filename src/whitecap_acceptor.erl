@@ -1,9 +1,6 @@
 -module(whitecap_acceptor).
 -include("whitecap.hrl").
 
--compile(inline).
--compile({inline_size, 512}).
-
 %% internal
 -export([
     init/3,
