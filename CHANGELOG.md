@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0
+
+### Changed
+
+- The acceptor and connection loop now use the `socket` NIF API
+  (`socket:accept/recv/send/close`) instead of `gen_tcp`. Accepted
+  sockets run with `{otp, select_read}` enabled: every successful
+  `recv` re-arms the read select inside the same NIF call, so the
+  steady state is one `$socket` message plus one `recv` per request
+  instead of recv/EAGAIN/select/recv. Keep-alive throughput improves
+  ~7% (107.5k -> 115.1k req/s, 64 connections, M2 Pro).
+- The raw `SO_REUSEPORT` options are replaced with the portable
+  `{socket, reuseport}` option, and the listener's `send_timeout`
+  behaviour is emulated with `socket:send/3` plus close-on-error.
+- Minimum supported OTP is now 27.3 (required by `select_read`).
+
+### Known issues
+
+- Connection-per-request workloads drop ~6% on stock OTP because
+  `socket:close` finalizes on a dirty scheduler; a fix is pending
+  upstream.
+
 ## 0.1.7
 
 ### Added
