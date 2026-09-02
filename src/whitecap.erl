@@ -2,6 +2,7 @@
 -include("whitecap.hrl").
 
 -export([
+    connections/0,
     events/0,
     start_listeners/1,
     start_listeners/2
@@ -10,6 +11,13 @@
 -define(DEFAULT_LISTENERS, 4).
 
 %% public
+-spec connections() ->
+    non_neg_integer().
+
+connections() ->
+    {ok, Connections} = whitecap_config:get(connections),
+    counters:get(Connections, 1).
+
 -spec events() ->
     [telemetry:event_name()].
 
@@ -18,6 +26,7 @@ events() ->
         [whitecap, connections, accept],
         [whitecap, connections, accept_error],
         [whitecap, connections, close],
+        [whitecap, connections, max_connections],
         [whitecap, connections, max_keepalive],
         [whitecap, connections, send_error],
         [whitecap, connections, stats],

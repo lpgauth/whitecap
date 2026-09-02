@@ -28,7 +28,9 @@ init(Name, Opts, Parent) ->
             case listen(Ip, Port) of
                 {ok, LSocket} ->
                     proc_lib:init_ack(Parent, {ok, self()}),
-                    loop(LSocket, Opts);
+                    {ok, Connections} = whitecap_config:get(connections),
+                    {ok, MaxConnections} = whitecap_config:get(max_connections),
+                    loop(LSocket, Opts, Connections, MaxConnections);
                 {error, _} = Error ->
                     proc_lib:init_ack(Parent, Error)
             end;
@@ -56,22 +58,45 @@ listen(Ip, Port) ->
             Error
     end.
 
-loop(LSocket, Opts) ->
+loop(LSocket, Opts, Connections, MaxConnections) ->
     case socket:accept(LSocket) of
         {ok, Socket} ->
-            telemetry:execute([whitecap, connections, accept], #{}),
-            _ = socket:setopt(Socket, {tcp, nodelay}, true),
-            _ = socket:setopt(Socket, {otp, select_read}, true),
-            Pid = whitecap_connection:start(Socket, Opts),
-            _ = socket:setopt(Socket, {otp, controlling_process}, Pid),
-            loop(LSocket, Opts);
+            case reserve(Connections, MaxConnections) of
+                true ->
+                    telemetry:execute([whitecap, connections, accept], #{}),
+                    _ = socket:setopt(Socket, {tcp, nodelay}, true),
+                    _ = socket:setopt(Socket, {otp, select_read}, true),
+                    Pid = whitecap_connection:start(Socket, Opts),
+                    _ = socket:setopt(Socket, {otp, controlling_process}, Pid);
+                false ->
+                    _ = socket:close(Socket),
+                    telemetry:execute([whitecap, connections, max_connections], #{})
+            end,
+            loop(LSocket, Opts, Connections, MaxConnections);
         {error, closed} ->
             ok;
         {error, Reason} ->
             logger:warning("whitecap accept error: ~p", [Reason]),
             telemetry:execute([whitecap, connections, accept_error],
                 #{}, #{reason => Reason}),
-            loop(LSocket, Opts)
+            loop(LSocket, Opts, Connections, MaxConnections)
+    end.
+
+%% The slot is claimed here, before the worker exists, and released by
+%% the worker's exit path, so a worker that dies abnormally still gives
+%% it back. Over the limit the socket is closed without a response: a
+%% send from the accept loop would stall every pending accept behind one
+%% slow client.
+reserve(_Connections, infinity) ->
+    true;
+reserve(Connections, MaxConnections) ->
+    counters:add(Connections, 1, 1),
+    case counters:get(Connections, 1) > MaxConnections of
+        true ->
+            counters:sub(Connections, 1, 1),
+            false;
+        false ->
+            true
     end.
 
 safe_register(Name) ->
