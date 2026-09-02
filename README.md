@@ -99,7 +99,7 @@ Each connection worker is a single process serving a per-connection request loop
 
 There is no shared in-flight queue across connections (that's what `max_keepalive` and connection count are for). If you need true pipelined parallelism inside one connection, whitecap is the wrong tool — see Non-goals.
 
-Connection count itself is capped by `max_connections`. The slot is claimed by the acceptor before the worker is spawned and released when the worker exits, a crash included, so the count cannot drift upwards. `whitecap:connections/0` returns the current count.
+Connection count itself is capped by `max_connections`. The acceptor claims a slot before spawning the worker, which releases it when it exits, a crash included. `whitecap:connections/0` returns the current count.
 
 ## Non-goals
 

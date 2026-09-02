@@ -82,11 +82,8 @@ loop(LSocket, Opts, Connections, MaxConnections) ->
             loop(LSocket, Opts, Connections, MaxConnections)
     end.
 
-%% The slot is claimed here, before the worker exists, and released by
-%% the worker's exit path, so a worker that dies abnormally still gives
-%% it back. Over the limit the socket is closed without a response: a
-%% send from the accept loop would stall every pending accept behind one
-%% slow client.
+%% Rejections close without a response: a send from the accept loop would
+%% stall every pending accept behind one slow client.
 reserve(_Connections, infinity) ->
     true;
 reserve(Connections, MaxConnections) ->

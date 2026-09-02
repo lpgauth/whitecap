@@ -57,8 +57,8 @@ recv_loop(Socket, Opts) ->
         infinity ->
             recv_loop(<<>>, undefined, undefined, State, 0, Opts);
         _ ->
-            %% Release the slot the acceptor claimed on every exit path,
-            %% a crash included, so the count cannot drift upwards.
+            %% A worker can die abnormally, so the release cannot live
+            %% in close/3.
             try
                 recv_loop(<<>>, undefined, undefined, State, 0, Opts)
             after
