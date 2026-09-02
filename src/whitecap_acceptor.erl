@@ -90,10 +90,9 @@ loop(LSocket, Opts, Connections, MaxConnections) ->
 reserve(_Connections, infinity) ->
     true;
 reserve(Connections, MaxConnections) ->
-    counters:add(Connections, 1, 1),
-    case counters:get(Connections, 1) > MaxConnections of
+    case atomics:add_get(Connections, 1, 1) > MaxConnections of
         true ->
-            counters:sub(Connections, 1, 1),
+            atomics:sub(Connections, 1, 1),
             false;
         false ->
             true

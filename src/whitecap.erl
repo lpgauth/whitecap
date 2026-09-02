@@ -16,7 +16,7 @@
 
 connections() ->
     {ok, Connections} = whitecap_config:get(connections),
-    counters:get(Connections, 1).
+    atomics:get(Connections, 1).
 
 -spec events() ->
     [telemetry:event_name()].

@@ -62,7 +62,7 @@ recv_loop(Socket, Opts) ->
             try
                 recv_loop(<<>>, undefined, undefined, State, 0, Opts)
             after
-                counters:sub(Connections, 1, 1)
+                atomics:sub(Connections, 1, 1)
             end
     end.
 
