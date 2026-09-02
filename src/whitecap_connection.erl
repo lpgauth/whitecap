@@ -37,11 +37,13 @@ start(Socket, Opts) ->
 
 recv_loop(Socket, Opts) ->
     {ok, BinPatterns} = whitecap_config:get(bin_patterns),
+    {ok, Connections} = whitecap_config:get(connections),
     {ok, HandlerTimeout} = whitecap_config:get(handler_timeout),
     {ok, KeepAliveTimeout} = whitecap_config:get(keepalive_timeout),
+    {ok, MaxConnections} = whitecap_config:get(max_connections),
     {ok, MaxKeepAlive} = whitecap_config:get(max_keepalive),
     {ok, RequestTimeout} = whitecap_config:get(request_timeout),
-    recv_loop(<<>>, undefined, undefined, #state {
+    State = #state {
         bin_patterns = BinPatterns,
         handle = make_ref(),
         handler_timeout = HandlerTimeout,
@@ -50,7 +52,19 @@ recv_loop(Socket, Opts) ->
         request_timeout = RequestTimeout,
         socket = Socket,
         timestamp = os:system_time()
-    }, 0, Opts).
+    },
+    case MaxConnections of
+        infinity ->
+            recv_loop(<<>>, undefined, undefined, State, 0, Opts);
+        _ ->
+            %% A worker can die abnormally, so the release cannot live
+            %% in close/3.
+            try
+                recv_loop(<<>>, undefined, undefined, State, 0, Opts)
+            after
+                atomics:sub(Connections, 1, 1)
+            end
+    end.
 
 %% private
 close(Socket, KeepAlive, Timestamp) ->
